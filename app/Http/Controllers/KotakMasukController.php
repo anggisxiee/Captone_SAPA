@@ -10,6 +10,7 @@ use App\Models\Percakapan;
 use App\Models\PesanWhatsapp;
 use App\Models\Prospek;
 use App\Models\User;
+use App\Support\Telepon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -80,12 +81,60 @@ class KotakMasukController extends Controller
         $percakapan = Percakapan::with(['kontak', 'nomorWhatsapp'])
             ->findOrFail($request->percakapan_id);
 
-        $this->pastikanBolehMembalas(auth()->user(), $percakapan);
+        $this->pastikanBolehMembalas(auth()->user(), $percakapan->nomor_whatsapp_id);
 
+        $this->simpanBalasan($percakapan, $request->isi);
+
+        return redirect()
+            ->route('kotak-masuk')
+            ->with('success', 'Pesan berhasil disimpan dan dimasukkan ke antrean.')
+            ->with('percakapan_terpilih', $percakapan->id);
+    }
+
+    /**
+     * Memulai percakapan ke nomor pelanggan (tombol "Pesan baru").
+     */
+    public function pesanBaru(Request $request)
+    {
+        if (is_string($request->telepon)) {
+            $request->merge(['telepon' => Telepon::normalisasi($request->telepon)]);
+        }
+
+        $data = $request->validate([
+            'nomor_whatsapp_id' => 'required|exists:nomor_whatsapp,id',
+            'telepon' => ['required', 'regex:/^62\d{8,13}$/'],
+            'nama' => 'nullable|string|max:255',
+            'isi' => 'required|string|max:5000',
+        ], [
+            'telepon.regex' => 'Nomor tujuan tidak valid. Contoh: 081234567890.',
+        ]);
+
+        $this->pastikanBolehMembalas(auth()->user(), (int) $data['nomor_whatsapp_id']);
+
+        $nomor = NomorWhatsapp::findOrFail($data['nomor_whatsapp_id']);
+
+        // Tidak boleh mengirim ke nomor WhatsApp milik SAPA sendiri.
+        if (NomorWhatsapp::where('nomor', $data['telepon'])->exists()) {
+            return back()->withErrors(['telepon' => 'Nomor tujuan adalah nomor WhatsApp SAPA sendiri.'])->withInput();
+        }
+
+        $percakapan = Percakapan::untuk($nomor, $data['telepon'], $data['nama'] ?: $data['telepon']);
+        $percakapan->load(['kontak', 'nomorWhatsapp']);
+
+        $this->simpanBalasan($percakapan, $data['isi']);
+
+        return redirect()
+            ->route('kotak-masuk')
+            ->with('success', 'Pesan dimasukkan ke antrean.')
+            ->with('percakapan_terpilih', $percakapan->id);
+    }
+
+    private function simpanBalasan(Percakapan $percakapan, string $isi): void
+    {
         $nomor = $percakapan->nomorWhatsapp;
         $kontak = $percakapan->kontak;
 
-        $antrean = DB::transaction(function () use ($request, $percakapan, $nomor, $kontak) {
+        $antrean = DB::transaction(function () use ($isi, $percakapan, $nomor, $kontak) {
             $percakapan->update([
                 'status' => 'Ditangani Agen',
                 'belum_dibalas' => false,
@@ -98,7 +147,7 @@ class KotakMasukController extends Controller
                 'kontak_nama' => $kontak->nama,
                 'kontak_telepon' => $kontak->nomor_telepon,
                 'pengirim' => 'agen',
-                'isi' => $request->isi,
+                'isi' => $isi,
             ]);
 
             return AntreanPesan::create([
@@ -106,7 +155,7 @@ class KotakMasukController extends Controller
                 'pengirim' => $nomor->nama,
                 'penerima' => $kontak->nama,
                 'penerima_telepon' => $kontak->nomor_telepon,
-                'isi_pesan' => $request->isi,
+                'isi_pesan' => $isi,
                 'skor_risiko' => 0,
                 'keputusan' => 'Kirim',
                 'percobaan' => 0,
@@ -116,11 +165,6 @@ class KotakMasukController extends Controller
         });
 
         KirimPesanKeluar::dispatch($antrean->id);
-
-        return redirect()
-            ->route('kotak-masuk')
-            ->with('success', 'Pesan berhasil disimpan dan dimasukkan ke antrean.')
-            ->with('percakapan_terpilih', $percakapan->id);
     }
 
     /**
@@ -132,7 +176,7 @@ class KotakMasukController extends Controller
             'status' => 'required|in:Ditangani Agen,Ditangani AI,Selesai',
         ]);
 
-        $this->pastikanBolehMembalas(auth()->user(), $percakapan);
+        $this->pastikanBolehMembalas(auth()->user(), $percakapan->nomor_whatsapp_id);
 
         $lama = $percakapan->status;
         $percakapan->update(['status' => $request->status]);
@@ -180,9 +224,9 @@ class KotakMasukController extends Controller
             ->all();
     }
 
-    private function pastikanBolehMembalas(User $pengguna, Percakapan $percakapan): void
+    private function pastikanBolehMembalas(User $pengguna, int $nomorWhatsappId): void
     {
-        if (!in_array((int) $percakapan->nomor_whatsapp_id, $this->nomorBolehBalas($pengguna), true)) {
+        if (!in_array($nomorWhatsappId, $this->nomorBolehBalas($pengguna), true)) {
             abort(403, 'Kamu tidak memiliki izin membalas pesan.');
         }
     }

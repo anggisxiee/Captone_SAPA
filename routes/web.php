@@ -86,6 +86,11 @@ Route::middleware(DemoAuth::class)->group(function () {
         'kirimPesan'
     ])->name('kotak-masuk.kirim');
 
+    Route::post('/kotak-masuk/baru', [
+        KotakMasukController::class,
+        'pesanBaru'
+    ])->name('kotak-masuk.baru');
+
     Route::patch('/kotak-masuk/percakapan/{percakapan}/status', [
         KotakMasukController::class,
         'ubahStatus'

@@ -207,4 +207,60 @@ class KotakMasukTest extends TestCase
 
         $this->assertSame($awal, $p->fresh()->status);
     }
+
+    public function test_pesan_baru_membuat_percakapan_dan_mengirim(): void
+    {
+        $user = $this->agen();
+        $nomor = $this->nomor('Admisi', '6281');
+        $user->nomorWhatsapp()->attach($nomor->id, ['hak_akses' => 'Balas chat']);
+
+        $this->actingAs($user)->post(route('kotak-masuk.baru'), [
+            'nomor_whatsapp_id' => $nomor->id,
+            'telepon' => '0857-1234-5678',
+            'nama' => 'Pak Budi',
+            'isi' => 'Selamat siang, ini dari Asentra.',
+        ])->assertRedirect(route('kotak-masuk'));
+
+        $this->assertDatabaseHas('kontak', ['nomor_telepon' => '6285712345678', 'nama' => 'Pak Budi']);
+
+        $p = Percakapan::firstOrFail();
+        $this->assertSame('Ditangani Agen', $p->status);
+        $this->assertDatabaseHas('antrean_pesan', [
+            'penerima_telepon' => '6285712345678',
+            'keputusan' => 'Terkirim',
+        ]);
+    }
+
+    public function test_pesan_baru_tanpa_hak_balas_ditolak(): void
+    {
+        $user = $this->agen();
+        $nomor = $this->nomor('Admisi', '6281');
+        $user->nomorWhatsapp()->attach($nomor->id, ['hak_akses' => 'Lihat saja']);
+
+        $this->actingAs($user)->post(route('kotak-masuk.baru'), [
+            'nomor_whatsapp_id' => $nomor->id,
+            'telepon' => '085712345678',
+            'isi' => 'Halo',
+        ])->assertForbidden();
+
+        $this->assertDatabaseCount('percakapan', 0);
+    }
+
+    public function test_pesan_baru_menolak_nomor_tidak_valid_dan_nomor_sapa_sendiri(): void
+    {
+        $user = $this->agen();
+        $nomor = $this->nomor('Admisi', '6281200000001');
+        $user->nomorWhatsapp()->attach($nomor->id, ['hak_akses' => 'Kelola']);
+        $this->actingAs($user);
+
+        $this->post(route('kotak-masuk.baru'), [
+            'nomor_whatsapp_id' => $nomor->id, 'telepon' => '123', 'isi' => 'Halo',
+        ])->assertSessionHasErrors('telepon');
+
+        $this->post(route('kotak-masuk.baru'), [
+            'nomor_whatsapp_id' => $nomor->id, 'telepon' => '081200000001', 'isi' => 'Halo',
+        ])->assertSessionHasErrors('telepon');
+
+        $this->assertDatabaseCount('percakapan', 0);
+    }
 }

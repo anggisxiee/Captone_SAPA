@@ -1,59 +1,113 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# SAPA — Sistem Asisten Pelanggan dan Akuisisi
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Aplikasi web untuk Bimbingan Belajar Asentra: beberapa nomor WhatsApp dipusatkan
+dalam satu kotak masuk, dilengkapi (pada sprint berikutnya) jawaban otomatis
+berbasis AI, CRM calon siswa, dan dasbor pemantauan.
+Kebutuhan lengkap ada di dokumen SRS dan rencana sprint tim.
 
-## About Laravel
+**Teknologi:** Laravel 12 (PHP 8.2+), Blade + Alpine.js + Tailwind CSS 4 (Vite), SQLite, antrean berbasis database.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Menjalankan di komputer lokal
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+```bash
+composer install
+npm install
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+cp .env.example .env
+php artisan key:generate
+touch database/database.sqlite          # jika belum ada
 
-## Learning Laravel
+php artisan migrate --seed              # skema + data demo
+npm run build                           # atau `npm run dev` saat mengubah tampilan
+```
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+Lalu jalankan tiga proses (atau cukup `composer dev`):
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+```bash
+php artisan serve          # aplikasi di http://127.0.0.1:8000
+php artisan queue:work     # mengirim pesan keluar dari antrean
+php artisan schedule:work  # menjalankan antrean:proses tiap menit (opsional)
+```
 
-## Laravel Sponsors
+> **Queue worker wajib berjalan** agar balasan agen benar-benar dikirim.
+> Tanpa itu pesan menumpuk di tabel `antrean_pesan` dengan keputusan "Kirim".
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### Akun demo (password semua: `password123`)
 
-### Premium Partners
+| Email | Role | Halaman awal |
+|---|---|---|
+| `admin@asentra.sch.id` | Administrator | Dasbor |
+| `supervisor@asentra.sch.id` | Supervisor | Dasbor |
+| `dewi@asentra.sch.id` | Agen/CS | Kotak Masuk |
+| `nonaktif@asentra.sch.id` | Agen/CS (nonaktif) | ditolak saat login |
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+Seeder hanya untuk pengembangan. Jangan dijalankan di server yang berisi data nyata.
 
-## Contributing
+## Gateway WhatsApp
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+SAPA berbicara dengan WhatsApp lewat antarmuka `App\Services\WhatsApp\WhatsAppGateway`.
+Driver diatur dengan `WHATSAPP_DRIVER` di `.env`.
 
-## Code of Conduct
+| Driver | Keterangan |
+|---|---|
+| `fake` (bawaan) | Simulasi. Pesan keluar hanya dicatat di `storage/logs/laravel.log`. Pada halaman Nomor WhatsApp ada tombol "Simulasikan pindai (mode uji)". Teks `[gagal]` pada pesan memicu jalur gagal kirim. |
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Driver sungguhan belum ada; tambahkan di `App\Providers\AppServiceProvider`.
+Kode QR tampil sebagai kotak pengganti sampai paket `bacon/qr-code` dipasang
+(`composer require bacon/qr-code`).
 
-## Security Vulnerabilities
+### Webhook (dipanggil oleh gateway)
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Semua permintaan wajib memakai header `X-Gateway-Token` = `WHATSAPP_WEBHOOK_TOKEN`.
 
-## License
+| Endpoint | Fungsi |
+|---|---|
+| `POST /api/webhook/whatsapp/pesan` | Pesan pelanggan masuk: `nomor`, `dari`, `isi`, opsional `nama`, `id_pesan` |
+| `POST /api/webhook/whatsapp/sesi` | Status sesi: `nomor`, `status` (`tersambung` / `terputus` / `gagal`), opsional `alasan` |
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Contoh:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/webhook/whatsapp/pesan \
+  -H "X-Gateway-Token: $WHATSAPP_WEBHOOK_TOKEN" \
+  -H "Accept: application/json" -H "Content-Type: application/json" \
+  -d '{"nomor":"6281200000001","dari":"081277770001","nama":"Budi","isi":"Halo"}'
+```
+
+Respons: `201` tersimpan, `200` duplikat (`id_pesan` sama), `401` token salah,
+`404` nomor tidak dikenal, `409` nomor tidak tersambung atau nonaktif.
+
+## Hak akses
+
+| Role | Akses |
+|---|---|
+| Agen/CS | Dasbor, Kotak Masuk, Prospek, Kontak, Basis Pengetahuan; hanya nomor WhatsApp yang diberi akses |
+| Supervisor | Semua di atas + Nomor WhatsApp (kelola data), Pengaturan AI, Antrean & Risiko, Log Audit |
+| Administrator | Semua, termasuk Tim & Akses serta penautan/pemutusan sesi WhatsApp |
+
+Hak per nomor: `Tidak ada` · `Lihat saja` · `Balas chat` · `Kelola`.
+Login ditahan 5 menit setelah 5 kali gagal.
+
+## Pengujian
+
+```bash
+php artisan test
+```
+
+| Berkas tes | Cakupan |
+|---|---|
+| `LoginTest` | Login, kunci 5× gagal, akun nonaktif, logout, log audit (TC01) |
+| `KotakMasukTest` | Percakapan per hak akses, balas, ubah status (TC02, TC07) |
+| `WebhookWhatsappTest` | Pesan masuk, duplikat, token, sesi |
+| `KirimPesanKeluarTest` | Pengiriman, percobaan ulang, pusat risiko |
+| `NomorWhatsappSesiTest` | Penautan QR, kedaluwarsa, putus (TC11) |
+| `HalamanTest` | Semua halaman terbuka sesuai role |
+
+## Struktur penting
+
+```
+app/Services/WhatsApp/   gateway, sesi nomor, pesan masuk, QR
+app/Jobs/                KirimPesanKeluar
+app/Http/Controllers/    controller web; Api/ untuk webhook
+routes/web.php           halaman    routes/api.php  webhook
+```

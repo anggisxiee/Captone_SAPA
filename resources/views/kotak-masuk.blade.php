@@ -4,6 +4,8 @@
 @section('subtitle', 'Percakapan WhatsApp dari semua nomor')
 
 @section('actions')
+    {{-- x-data diperlukan agar Alpine memproses @change dan @click di header --}}
+    <div x-data class="flex items-center gap-2">
     <select
         class="field w-auto text-xs py-1.5"
         @change="$dispatch('nomor-filter', $event.target.value)"
@@ -17,9 +19,13 @@
         @endforeach
     </select>
 
-    <button class="btn btn-primary text-xs py-1.5">
-        Pesan baru
-    </button>
+    @if (count($nomorBolehBalas) > 0)
+        <button type="button" class="btn btn-primary text-xs py-1.5"
+            @click="$dispatch('pesan-baru')">
+            Pesan baru
+        </button>
+    @endif
+    </div>
 @endsection
 
 @section('content')
@@ -404,4 +410,51 @@
     </div>
 
 </div>
+
+{{-- MODAL PESAN BARU --}}
+@if (count($nomorBolehBalas) > 0)
+<div x-data="{ buka: {{ $errors->has('telepon') || $errors->has('isi') || $errors->has('nomor_whatsapp_id') ? 'true' : 'false' }} }"
+    @pesan-baru.window="buka = true"
+    x-show="buka" x-cloak
+    class="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 p-4">
+
+    <div @click.outside="buka = false" class="bg-white rounded-xl p-4 w-full max-w-sm">
+        <h3 class="font-semibold text-sm mb-3">Pesan baru</h3>
+
+        <form method="POST" action="{{ route('kotak-masuk.baru') }}" class="space-y-3">
+            @csrf
+
+            <div>
+                <label class="block text-[10px] text-slate-500 mb-1">Kirim dari nomor</label>
+                <select name="nomor_whatsapp_id" class="field w-full !text-xs" required>
+                    @foreach ($nomorWhatsapp->whereIn('id', $nomorBolehBalas) as $nomor)
+                        <option value="{{ $nomor->id }}" @selected(old('nomor_whatsapp_id') == $nomor->id)>{{ $nomor->nama }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-[10px] text-slate-500 mb-1">Nomor tujuan</label>
+                <input type="text" name="telepon" value="{{ old('telepon') }}" required
+                    placeholder="Contoh: 081234567890" class="field w-full !text-xs">
+            </div>
+
+            <div>
+                <label class="block text-[10px] text-slate-500 mb-1">Nama (opsional)</label>
+                <input type="text" name="nama" value="{{ old('nama') }}" class="field w-full !text-xs">
+            </div>
+
+            <div>
+                <label class="block text-[10px] text-slate-500 mb-1">Pesan</label>
+                <textarea name="isi" rows="3" required maxlength="5000" class="field w-full !text-xs">{{ old('isi') }}</textarea>
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <button type="button" @click="buka = false" class="btn btn-outline !text-[10px] !px-2.5 !py-1">Batal</button>
+                <button type="submit" class="btn btn-primary !text-[10px] !px-2.5 !py-1">Kirim</button>
+            </div>
+        </form>
+    </div>
+</div>
+@endif
 @endsection
