@@ -55,7 +55,7 @@ class LoginTest extends TestCase
     {
         $this->buatUser();
 
-        $this->masuk('salah')->assertSessionHasErrors(['email' => 'Email atau password salah.']);
+        $this->masuk('salah')->assertSessionHasErrors(['email' => 'Email atau kata sandi salah.']);
 
         $this->assertGuest();
         $this->assertSame(1, LogAudit::where('aksi', 'Login gagal')->count());
