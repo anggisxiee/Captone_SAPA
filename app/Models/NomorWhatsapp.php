@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\Telepon;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,15 +13,30 @@ class NomorWhatsapp extends Model
     protected $table = 'nomor_whatsapp';
 
     protected $fillable = [
-        'nama',
+        'label',
+        'nama',          // alias untuk label (lihat atribut nama() di bawah)
         'nomor',
         'tujuan',
         'status',
+        'mode_ai',
+        'skor_kesehatan',
         'status_sesi',
         'qr_token',
         'qr_kedaluwarsa_pada',
         'terakhir_aktif_pada',
     ];
+
+    /**
+     * SRS menamai kolom ini "label"; "nama" dipertahankan sebagai alias agar
+     * kode dan tampilan yang sudah ada tetap bekerja.
+     */
+    protected function nama(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->attributes['label'] ?? null,
+            set: fn ($nilai) => ['label' => $nilai],
+        );
+    }
 
     protected function casts(): array
     {

@@ -26,7 +26,7 @@ class NomorWhatsappSesiTest extends TestCase
 
     private function nomor(array $o = []): NomorWhatsapp
     {
-        return NomorWhatsapp::create($o + ['nama' => 'Admisi', 'nomor' => '6281200000001']);
+        return NomorWhatsapp::create($o + ['label' => 'Admisi', 'nomor' => '6281200000001']);
     }
 
     public function test_tambah_nomor_menyimpan_tujuan_dan_menyeragamkan_format(): void
@@ -109,7 +109,7 @@ class NomorWhatsappSesiTest extends TestCase
     public function test_putuskan_mengubah_status_dan_tidak_memengaruhi_nomor_lain(): void
     {
         $a = $this->nomor(['status_sesi' => 'Tersambung']);
-        $b = $this->nomor(['nama' => 'Sales', 'nomor' => '6281200000002', 'status_sesi' => 'Tersambung']);
+        $b = $this->nomor(['label' => 'Sales', 'nomor' => '6281200000002', 'status_sesi' => 'Tersambung']);
 
         $this->actingAs($this->admin())
             ->post(route('nomor-whatsapp.putuskan', $a))
@@ -186,7 +186,7 @@ class NomorWhatsappSesiTest extends TestCase
      */
     public function test_atribut_klik_pada_kartu_nomor_utuh(): void
     {
-        $this->nomor(['nama' => 'Belum Tertaut']);
+        $this->nomor(['label' => 'Belum Tertaut']);
 
         $html = $this->actingAs($this->admin())
             ->get(route('nomor-whatsapp'))

@@ -14,7 +14,7 @@
 
         @foreach ($nomorWhatsapp as $nomor)
             <option value="{{ $nomor->id }}">
-                {{ $nomor->nama }}
+                {{ $nomor->label }}
             </option>
         @endforeach
     </select>
@@ -424,7 +424,7 @@
                 <label class="block text-[10px] text-slate-500 mb-1">Kirim dari nomor</label>
                 <select name="nomor_whatsapp_id" class="field w-full !text-xs" required>
                     @foreach ($nomorWhatsapp->whereIn('id', $nomorBolehBalas) as $nomor)
-                        <option value="{{ $nomor->id }}" @selected(old('nomor_whatsapp_id') == $nomor->id)>{{ $nomor->nama }}</option>
+                        <option value="{{ $nomor->id }}" @selected(old('nomor_whatsapp_id') == $nomor->id)>{{ $nomor->label }}</option>
                     @endforeach
                 </select>
             </div>

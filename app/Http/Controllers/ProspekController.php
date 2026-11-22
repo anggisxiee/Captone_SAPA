@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Kontak;
 use App\Models\Prospek;
+use App\Support\Telepon;
 use Illuminate\Http\Request;
 
 class ProspekController extends Controller
@@ -72,6 +74,17 @@ class ProspekController extends Controller
 
         $validated['skor'] = $validated['skor'] ?? 0;
         $validated['penanggung_jawab'] = auth()->id();
+
+        // Setiap prospek terhubung ke satu kontak (SRS: prospek.kontak_id).
+        $kontak = Kontak::firstOrCreate(
+            ['nomor_telepon' => Telepon::normalisasi($validated['nomor_telepon'])],
+            [
+                'nama' => $validated['nama'],
+                'jenjang' => $validated['jenjang'] ?? null,
+                'sumber' => $validated['sumber'] ?? null,
+            ]
+        );
+        $validated['kontak_id'] = $kontak->id;
 
         Prospek::create($validated);
 

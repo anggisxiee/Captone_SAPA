@@ -15,7 +15,16 @@ class Kontak extends Model
         'jenjang',
         'kelas',
         'mapel',
+        'kota',
+        'sumber',
+        'label',
     ];
+
+    /** Nama untuk ditampilkan; nomor telepon bila nama belum diketahui. */
+    public function getNamaTampilAttribute(): string
+    {
+        return $this->nama ?: $this->nomor_telepon;
+    }
 
     public function percakapan(): HasMany
     {

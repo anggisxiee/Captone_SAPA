@@ -26,8 +26,11 @@ class PesanMasuk
         $telepon = Telepon::normalisasi($dari);
 
         return DB::transaction(function () use ($nomor, $telepon, $nama, $isi, $idPesan) {
+            $percakapan = Percakapan::untuk($nomor, $telepon, $nama ?: null);
+
+            // Id pesan dari gateway unik per percakapan; pengiriman ulang tidak disimpan ganda.
             if ($idPesan !== null) {
-                $ada = PesanWhatsapp::where('nomor_whatsapp_id', $nomor->id)
+                $ada = PesanWhatsapp::where('percakapan_id', $percakapan->id)
                     ->where('wa_message_id', $idPesan)
                     ->first();
 
@@ -36,22 +39,19 @@ class PesanMasuk
                 }
             }
 
-            $percakapan = Percakapan::untuk($nomor, $telepon, $nama ?: $telepon);
-
             $pesan = PesanWhatsapp::create([
-                'nomor_whatsapp_id' => $nomor->id,
                 'percakapan_id' => $percakapan->id,
-                'kontak_nama' => $percakapan->kontak->nama,
-                'kontak_telepon' => $telepon,
-                'pengirim' => 'pelanggan',
+                'arah' => 'masuk',
+                'jenis_pengirim' => 'pelanggan',
                 'isi' => $isi,
+                'status' => 'diterima',
                 'wa_message_id' => $idPesan,
             ]);
 
+            $percakapan->increment('belum_dibaca');
             $percakapan->update([
                 // Percakapan yang sudah selesai dibuka kembali.
                 'status' => $percakapan->status === 'Selesai' ? 'Baru' : $percakapan->status,
-                'belum_dibalas' => true,
                 'pesan_terakhir_pada' => now(),
             ]);
 

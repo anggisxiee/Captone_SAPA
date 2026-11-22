@@ -47,8 +47,9 @@ class KirimPesanKeluar implements ShouldQueue, ShouldBeUniqueUntilProcessing
 
         $nomor = $antrean->nomorWhatsapp;
 
-        if (!$antrean->penerima_telepon) {
-            $this->tandaiGagal($antrean, 'Nomor telepon penerima tidak diketahui.');
+        // penerima berisi nomor tujuan (SRS). Baris lama berisi nama tidak bisa dikirim.
+        if (!preg_match('/^62\d{8,13}$/', (string) $antrean->penerima)) {
+            $this->tandaiGagal($antrean, 'Nomor telepon penerima tidak valid.');
 
             return;
         }
@@ -60,7 +61,7 @@ class KirimPesanKeluar implements ShouldQueue, ShouldBeUniqueUntilProcessing
         }
 
         try {
-            $gateway->kirim($nomor, $antrean->penerima_telepon, $antrean->isi_pesan);
+            $gateway->kirim($nomor, $antrean->penerima, $antrean->isi_pesan);
         } catch (GagalKirimPesanException $e) {
             $this->gagalSekali($antrean, $e->getMessage());
 
@@ -75,6 +76,7 @@ class KirimPesanKeluar implements ShouldQueue, ShouldBeUniqueUntilProcessing
         ]);
 
         $nomor->update(['terakhir_aktif_pada' => now()]);
+        $antrean->pesanWhatsapp?->update(['status' => 'terkirim']);
 
         $this->catatRiwayat($antrean, 'Kirim', 'Terkirim', 'Pesan terkirim melalui gateway.');
     }
@@ -109,6 +111,7 @@ class KirimPesanKeluar implements ShouldQueue, ShouldBeUniqueUntilProcessing
         ]);
 
         $this->catatRiwayat($antrean, 'Kirim', 'Gagal', $alasan);
+        $antrean->pesanWhatsapp?->update(['status' => 'gagal']);
 
         InsidenRisiko::create([
             'nomor_whatsapp_id' => $antrean->nomor_whatsapp_id,

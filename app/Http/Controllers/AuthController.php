@@ -49,7 +49,8 @@ class AuthController extends Controller
             LogAudit::catat(
                 'Login gagal',
                 'Percobaan login gagal untuk ' . $kredensial['email'],
-                'Autentikasi',
+                'users',
+                $user?->id,
                 $user?->id
             );
 
@@ -69,7 +70,7 @@ class AuthController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        LogAudit::catat('Login', 'Pengguna berhasil masuk.', 'Autentikasi', $user->id);
+        LogAudit::catat('Login', 'Pengguna berhasil masuk.', 'users', $user->id, $user->id);
 
         return redirect()->intended($this->halamanAwal($user));
     }
@@ -77,7 +78,7 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         if (Auth::check()) {
-            LogAudit::catat('Logout', 'Pengguna keluar.', 'Autentikasi');
+            LogAudit::catat('Logout', 'Pengguna keluar.', 'users', null, Auth::id());
         }
 
         Auth::logout();

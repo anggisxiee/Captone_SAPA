@@ -40,7 +40,7 @@ class BaileysGatewayTest extends TestCase
 
     private function nomor(array $o = []): NomorWhatsapp
     {
-        return NomorWhatsapp::create($o + ['nama' => 'Admisi', 'nomor' => self::NOMOR]);
+        return NomorWhatsapp::create($o + ['label' => 'Admisi', 'nomor' => self::NOMOR]);
     }
 
     private function admin(): User
@@ -231,8 +231,7 @@ class BaileysGatewayTest extends TestCase
         Http::fake(['*' => Http::response(['id_pesan' => 'WAMID-1'])]);
         $nomor = $this->nomor(['status_sesi' => 'Tersambung']);
         $antrean = AntreanPesan::create([
-            'nomor_whatsapp_id' => $nomor->id, 'pengirim' => 'Admisi', 'penerima' => 'Bu Ratna',
-            'penerima_telepon' => '6285711110001', 'isi_pesan' => 'Halo', 'keputusan' => 'Kirim',
+            'nomor_whatsapp_id' => $nomor->id, 'pengirim' => 'Admisi', 'penerima' => '6285711110001', 'isi_pesan' => 'Halo', 'keputusan' => 'Kirim',
             'maks_percobaan' => 3, 'jadwal_kirim' => now(),
         ]);
 
@@ -247,8 +246,7 @@ class BaileysGatewayTest extends TestCase
         Http::fake(['*' => Http::response(['pesan' => 'Nomor WhatsApp tidak tersambung di gateway.'], 409)]);
         $nomor = $this->nomor(['status_sesi' => 'Tersambung']);
         $antrean = AntreanPesan::create([
-            'nomor_whatsapp_id' => $nomor->id, 'pengirim' => 'Admisi', 'penerima' => 'Bu Ratna',
-            'penerima_telepon' => '6285711110001', 'isi_pesan' => 'Halo', 'keputusan' => 'Kirim',
+            'nomor_whatsapp_id' => $nomor->id, 'pengirim' => 'Admisi', 'penerima' => '6285711110001', 'isi_pesan' => 'Halo', 'keputusan' => 'Kirim',
             'maks_percobaan' => 3, 'jadwal_kirim' => now(),
         ]);
 

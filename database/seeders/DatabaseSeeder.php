@@ -53,7 +53,7 @@ class DatabaseSeeder extends Seeder
         $aktifAwal = $sesiAwal === 'Tersambung' ? now() : null;
 
         $admisi = NomorWhatsapp::updateOrCreate(['nomor' => '6281200000001'], [
-            'nama' => 'Admisi Asentra',
+            'label' => 'Admisi Asentra',
             'tujuan' => 'Admin',
             'status' => 'Aktif',
             'status_sesi' => $sesiAwal,
@@ -61,7 +61,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $sales = NomorWhatsapp::updateOrCreate(['nomor' => '6281200000002'], [
-            'nama' => 'Sales Asentra',
+            'label' => 'Sales Asentra',
             'tujuan' => 'Sales',
             'status' => 'Aktif',
             'status_sesi' => $sesiAwal,
@@ -122,13 +122,13 @@ class DatabaseSeeder extends Seeder
         }
 
         foreach ($pesan as $i => [$pengirim, $isi]) {
+            $masuk = $pengirim === 'pelanggan';
             $m = new PesanWhatsapp([
-                'nomor_whatsapp_id' => $nomor->id,
                 'percakapan_id' => $percakapan->id,
-                'kontak_nama' => $nama,
-                'kontak_telepon' => $telepon,
-                'pengirim' => $pengirim,
+                'arah' => $masuk ? 'masuk' : 'keluar',
+                'jenis_pengirim' => $pengirim,
                 'isi' => $isi,
+                'status' => $masuk ? 'diterima' : 'terkirim',
             ]);
             $m->created_at = now()->subMinutes(30 - $i);
             $m->save();
@@ -136,7 +136,7 @@ class DatabaseSeeder extends Seeder
 
         $percakapan->update([
             'status' => $status,
-            'belum_dibalas' => $belumDibalas,
+            'belum_dibaca' => $belumDibalas ? 1 : 0,
             'pesan_terakhir_pada' => now()->subMinutes(30 - count($pesan)),
         ]);
     }

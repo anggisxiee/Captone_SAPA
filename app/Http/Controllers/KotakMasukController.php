@@ -64,7 +64,7 @@ class KotakMasukController extends Controller
             'nomorBolehBalas' => $nomorBolehBalas,
             'daftar' => $daftar,
             'chatAwal' => $chatAwal,
-            'jumlahBelumDibalas' => $percakapan->where('belum_dibalas', true)->count(),
+            'jumlahBelumDibalas' => $percakapan->filter(fn (Percakapan $p) => $p->belum_dibalas)->count(),
         ]);
     }
 
@@ -135,26 +135,29 @@ class KotakMasukController extends Controller
         $kontak = $percakapan->kontak;
 
         $antrean = DB::transaction(function () use ($isi, $percakapan, $nomor, $kontak) {
+            // Dihitung sebelum balasan ini tersimpan agar pesan masuk pertama terbaca.
+            $percakapan->catatBalasanPertama();
+
             $percakapan->update([
                 'status' => 'Ditangani Agen',
-                'belum_dibalas' => false,
+                'agen_id' => auth()->id(),
+                'belum_dibaca' => 0,
                 'pesan_terakhir_pada' => now(),
             ]);
 
-            PesanWhatsapp::create([
-                'nomor_whatsapp_id' => $nomor->id,
+            $pesan = PesanWhatsapp::create([
                 'percakapan_id' => $percakapan->id,
-                'kontak_nama' => $kontak->nama,
-                'kontak_telepon' => $kontak->nomor_telepon,
-                'pengirim' => 'agen',
+                'arah' => 'keluar',
+                'jenis_pengirim' => 'agen',
                 'isi' => $isi,
+                'status' => 'menunggu',
             ]);
 
             return AntreanPesan::create([
                 'nomor_whatsapp_id' => $nomor->id,
-                'pengirim' => $nomor->nama,
-                'penerima' => $kontak->nama,
-                'penerima_telepon' => $kontak->nomor_telepon,
+                'pesan_whatsapp_id' => $pesan->id,
+                'pengirim' => $nomor->label,
+                'penerima' => $kontak->nomor_telepon,
                 'isi_pesan' => $isi,
                 'skor_risiko' => 0,
                 'keputusan' => 'Kirim',
@@ -179,12 +182,24 @@ class KotakMasukController extends Controller
         $this->pastikanBolehMembalas(auth()->user(), $percakapan->nomor_whatsapp_id);
 
         $lama = $percakapan->status;
-        $percakapan->update(['status' => $request->status]);
+        $perubahan = ['status' => $request->status];
+
+        // Mengambil alih menugaskan percakapan ke pengguna ini; dikembalikan ke AI melepasnya.
+        if ($request->status === 'Ditangani Agen') {
+            $perubahan['agen_id'] = auth()->id();
+        } elseif ($request->status === 'Ditangani AI') {
+            $perubahan['agen_id'] = null;
+        }
+
+        $percakapan->update($perubahan);
 
         LogAudit::catat(
             'Ubah status percakapan',
             "Percakapan #{$percakapan->id}: {$lama} → {$request->status}",
-            'Percakapan'
+            'percakapan',
+            null,
+            $percakapan->id,
+            ['sebelum' => $lama, 'sesudah' => $request->status]
         );
 
         return redirect()
@@ -198,13 +213,15 @@ class KotakMasukController extends Controller
      */
     private function nomorDapatDilihat(User $pengguna): Collection
     {
-        if ($pengguna->role === 'Administrator') {
-            return NomorWhatsapp::orderBy('nama')->get();
+        // BR03: Supervisor membaca semua nomor, Administrator memiliki semua fitur.
+        // Agen/CS hanya nomor yang ditugaskan kepadanya.
+        if (in_array($pengguna->role, ['Administrator', 'Supervisor'], true)) {
+            return NomorWhatsapp::orderBy('label')->get();
         }
 
         return $pengguna->nomorWhatsapp()
             ->wherePivotIn('hak_akses', ['Lihat saja', ...self::HAK_MEMBALAS])
-            ->orderBy('nama')
+            ->orderBy('nomor_whatsapp.label')
             ->get();
     }
 
@@ -247,7 +264,7 @@ class KotakMasukController extends Controller
         };
 
         $pesan = $p->pesan->map(fn (PesanWhatsapp $m) => [
-            'pengirim' => $m->pengirim,
+            'pengirim' => $m->jenis_pengirim,
             'isi' => $m->isi,
             'jam' => $m->created_at?->format('H:i') ?? '',
         ])->all();
@@ -256,11 +273,11 @@ class KotakMasukController extends Controller
 
         return [
             'id' => $p->id,
-            'nama' => $kontak->nama,
+            'nama' => $kontak->nama_tampil,
             'telepon' => $kontak->nomor_telepon,
             'jam' => $this->formatWaktu($p->pesan_terakhir_pada),
             'cuplikan' => $terakhir->isi ?? 'Belum ada pesan.',
-            'nomor' => $p->nomorWhatsapp->nama,
+            'nomor' => $p->nomorWhatsapp->label,
             'nomorId' => $p->nomor_whatsapp_id,
             'status' => $label,
             'statusAsli' => $p->status,

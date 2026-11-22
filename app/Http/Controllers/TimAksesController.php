@@ -18,7 +18,7 @@ class TimAksesController extends Controller
             ->orderBy('name')
             ->get();
 
-        $nomorWhatsapp = NomorWhatsapp::orderBy('nama')->get();
+        $nomorWhatsapp = NomorWhatsapp::orderBy('label')->get();
 
         return view('tim-akses', compact(
             'pengguna',
@@ -80,7 +80,7 @@ class TimAksesController extends Controller
     {
         $user->load('aksesWhatsapp');
 
-        $nomorWhatsapp = NomorWhatsapp::orderBy('nama')->get();
+        $nomorWhatsapp = NomorWhatsapp::orderBy('label')->get();
 
         return view('tim-akses', [
             'pengguna' => User::with('aksesWhatsapp.nomorWhatsapp')

@@ -28,7 +28,7 @@ class KotakMasukTest extends TestCase
     private function nomor(string $nama, string $nomor): NomorWhatsapp
     {
         return NomorWhatsapp::create([
-            'nama' => $nama,
+            'label' => $nama,
             'nomor' => $nomor,
             'status_sesi' => 'Tersambung',
         ]);
@@ -37,7 +37,7 @@ class KotakMasukTest extends TestCase
     private function percakapan(NomorWhatsapp $nomor, string $telepon = '6285711110001'): Percakapan
     {
         $percakapan = Percakapan::untuk($nomor, $telepon, 'Bu Ratna');
-        $percakapan->update(['belum_dibalas' => true, 'pesan_terakhir_pada' => now()]);
+        $percakapan->update(['belum_dibaca' => 1, 'pesan_terakhir_pada' => now()]);
 
         return $percakapan;
     }
@@ -82,12 +82,11 @@ class KotakMasukTest extends TestCase
 
         $p = $this->percakapan($nomor);
         PesanWhatsapp::create([
-            'nomor_whatsapp_id' => $nomor->id,
             'percakapan_id' => $p->id,
-            'kontak_nama' => 'Bu Ratna',
-            'kontak_telepon' => '6285711110001',
-            'pengirim' => 'pelanggan',
+            'arah' => 'masuk',
+            'jenis_pengirim' => 'pelanggan',
             'isi' => 'Ada kelas 6 SD?',
+            'status' => 'diterima',
         ]);
 
         $response = $this->actingAs($user)->get(route('kotak-masuk'))->assertOk();
@@ -141,8 +140,8 @@ class KotakMasukTest extends TestCase
 
         $this->assertDatabaseHas('pesan_whatsapp', [
             'percakapan_id' => $p->id,
-            'pengirim' => 'agen',
-            'kontak_telepon' => '6285711110001',
+            'arah' => 'keluar',
+            'jenis_pengirim' => 'agen',
         ]);
         $this->assertDatabaseHas('antrean_pesan', ['nomor_whatsapp_id' => $nomor->id]);
     }
@@ -226,7 +225,7 @@ class KotakMasukTest extends TestCase
         $p = Percakapan::firstOrFail();
         $this->assertSame('Ditangani Agen', $p->status);
         $this->assertDatabaseHas('antrean_pesan', [
-            'penerima_telepon' => '6285712345678',
+            'penerima' => '6285712345678',
             'keputusan' => 'Terkirim',
         ]);
     }

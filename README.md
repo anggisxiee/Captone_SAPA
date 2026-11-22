@@ -33,6 +33,9 @@ php artisan schedule:work  # menjalankan antrean:proses tiap menit (opsional)
 > **Queue worker wajib berjalan** agar balasan agen benar-benar dikirim.
 > Tanpa itu pesan menumpuk di tabel `antrean_pesan` dengan keputusan "Kirim".
 
+> Sudah punya database dari versi sebelumnya? Cadangkan lalu jalankan `php artisan migrate` (bukan `migrate:fresh`).
+> Rincian perubahan skema dan kesesuaiannya dengan SRS ada di [`docs/skema-vs-srs.md`](docs/skema-vs-srs.md).
+
 ### Akun demo (password semua: `password123`)
 
 | Email | Role | Halaman awal |
@@ -117,6 +120,8 @@ cd wa-gateway && npm test   # gateway Node (tanpa perlu Baileys terpasang)
 | `NomorWhatsappSesiTest` | Penautan QR, kedaluwarsa, putus (TC11) |
 | `BaileysGatewayTest` | Driver `baileys` (gateway dipalsukan), event QR, gateway mati |
 | `HalamanTest` | Semua halaman terbuka sesuai role |
+| `SkemaSrsTest` | Tiap tabel dan kolom kamus data SRS ada, plus perilaku turunannya (PB-04) |
+| `MigrasiSkemaSrsTest` | Peningkatan dari skema lama dengan data nyata tidak menghilangkan data |
 
 ## Struktur penting
 

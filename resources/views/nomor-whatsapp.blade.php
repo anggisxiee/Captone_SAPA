@@ -10,7 +10,7 @@
         ? $nomorWhatsapp->firstWhere('id', session('tautkan_id'))
         : null;
     $tautkanOtomatis = ($nomorBaru && $penggunaLogin->role === 'Administrator')
-        ? ['id' => $nomorBaru->id, 'nama' => $nomorBaru->nama, 'nomor' => $nomorBaru->nomor]
+        ? ['id' => $nomorBaru->id, 'nama' => $nomorBaru->label, 'nomor' => $nomorBaru->nomor]
         : null;
 @endphp
 <div x-data="{
@@ -123,7 +123,7 @@ class="text-xs">
                 <div class="flex justify-between items-start">
                     <div>
                         <div class="font-semibold text-xs">
-                            {{ $item->nama }}
+                            {{ $item->label }}
                         </div>
                         <div class="text-[10px] text-slate-400 mt-0.5">
                             {{ $item->nomor }} · {{ $item->tujuan }}
@@ -173,7 +173,7 @@ class="text-xs">
                             </form>
                         @else
                             <button
-                                @click="mulaiTautan(@js(['id' => $item->id, 'nama' => $item->nama, 'nomor' => $item->nomor]))"
+                                @click="mulaiTautan(@js(['id' => $item->id, 'nama' => $item->label, 'nomor' => $item->nomor]))"
                                 class="btn btn-primary !text-[10px] !px-2.5 !py-1">
                                 {{ $item->status_sesi === 'Belum tertaut' ? 'Tautkan' : 'Tautkan ulang' }}
                             </button>
@@ -182,7 +182,7 @@ class="text-xs">
 
                     {{-- Kelola --}}
                     <button
-                        @click="bukaEdit(@js(['id' => $item->id, 'nama' => $item->nama, 'nomor' => $item->nomor, 'tujuan' => $item->tujuan]))"
+                        @click="bukaEdit(@js(['id' => $item->id, 'nama' => $item->label, 'nomor' => $item->nomor, 'tujuan' => $item->tujuan]))"
                         class="btn btn-outline !text-[10px] !px-2.5 !py-1">
                         Kelola
                     </button>
@@ -201,7 +201,7 @@ class="text-xs">
 
                     {{-- Hapus --}}
                     <button
-                        @click="bukaHapus(@js(['id' => $item->id, 'nama' => $item->nama]))"
+                        @click="bukaHapus(@js(['id' => $item->id, 'nama' => $item->label]))"
                         class="btn btn-danger !text-[10px] !px-2.5 !py-1">
                         Hapus
                     </button>

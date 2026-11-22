@@ -19,7 +19,7 @@ class NomorWhatsappController extends Controller
     // Menampilkan daftar nomor WhatsApp
     public function index()
     {
-        $nomorWhatsapp = NomorWhatsapp::orderBy('nama')->get();
+        $nomorWhatsapp = NomorWhatsapp::orderBy('label')->get();
 
         return view('nomor-whatsapp', compact('nomorWhatsapp'));
     }
@@ -132,7 +132,7 @@ class NomorWhatsappController extends Controller
 
         return redirect()
             ->route('nomor-whatsapp')
-            ->with('success', "Sesi {$nomorWhatsapp->nama} diputus.");
+            ->with('success', "Sesi {$nomorWhatsapp->label} diputus.");
     }
 
     /**

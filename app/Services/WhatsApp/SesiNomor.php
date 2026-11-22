@@ -28,7 +28,7 @@ class SesiNomor
             'qr_kedaluwarsa_pada' => now()->addSeconds(config('whatsapp.qr_ttl')),
         ]);
 
-        LogAudit::catat('Mulai tautan nomor', "QR dibuat untuk {$nomor->nama}", 'Nomor WhatsApp');
+        LogAudit::catat('Mulai tautan nomor', "QR dibuat untuk {$nomor->label}", 'nomor_whatsapp', null, $nomor->id);
 
         return $nomor;
     }
@@ -58,7 +58,7 @@ class SesiNomor
             'terakhir_aktif_pada' => now(),
         ]);
 
-        LogAudit::catat('Nomor tersambung', "{$nomor->nama} berhasil tertaut", 'Nomor WhatsApp');
+        LogAudit::catat('Nomor tersambung', "{$nomor->label} berhasil tertaut", 'nomor_whatsapp', null, $nomor->id);
     }
 
     public function tandaiTerputus(NomorWhatsapp $nomor): void
@@ -69,7 +69,7 @@ class SesiNomor
             'qr_kedaluwarsa_pada' => null,
         ]);
 
-        LogAudit::catat('Nomor terputus', "Sesi {$nomor->nama} berakhir", 'Nomor WhatsApp');
+        LogAudit::catat('Nomor terputus', "Sesi {$nomor->label} berakhir", 'nomor_whatsapp', null, $nomor->id);
     }
 
     public function tandaiGagal(NomorWhatsapp $nomor, ?string $alasan = null): void
@@ -84,11 +84,11 @@ class SesiNomor
             'nomor_whatsapp_id' => $nomor->id,
             'jenis_insiden' => 'Gagal tertaut',
             'tingkat_risiko' => 'Sedang',
-            'deskripsi' => "Penautan {$nomor->nama} gagal." . ($alasan ? " {$alasan}" : ''),
+            'deskripsi' => "Penautan {$nomor->label} gagal." . ($alasan ? " {$alasan}" : ''),
             'status' => 'Terbuka',
         ]);
 
-        LogAudit::catat('Nomor gagal tertaut', "Penautan {$nomor->nama} gagal", 'Nomor WhatsApp');
+        LogAudit::catat('Nomor gagal tertaut', "Penautan {$nomor->label} gagal", 'nomor_whatsapp', null, $nomor->id);
     }
 
     /**

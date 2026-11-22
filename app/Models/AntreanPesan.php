@@ -14,7 +14,7 @@ class AntreanPesan extends Model
         'nomor_whatsapp_id',
         'pengirim',
         'penerima',
-        'penerima_telepon',
+        'pesan_whatsapp_id',
         'isi_pesan',
         'skor_risiko',
         'keputusan',
@@ -34,6 +34,14 @@ class AntreanPesan extends Model
             'jadwal_kirim' => 'datetime',
             'terkirim_pada' => 'datetime',
         ];
+    }
+
+    /**
+     * Pesan di percakapan yang menjadi asal antrean ini.
+     */
+    public function pesanWhatsapp(): BelongsTo
+    {
+        return $this->belongsTo(PesanWhatsapp::class, 'pesan_whatsapp_id');
     }
 
     /**

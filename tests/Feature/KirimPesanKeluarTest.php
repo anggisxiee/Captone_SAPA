@@ -17,7 +17,7 @@ class KirimPesanKeluarTest extends TestCase
     private function antrean(string $isi = 'Halo!', string $sesi = 'Tersambung', ?string $telepon = '6285711110001'): AntreanPesan
     {
         $nomor = NomorWhatsapp::create([
-            'nama' => 'Admisi',
+            'label' => 'Admisi',
             'nomor' => '6281200000001',
             'status_sesi' => $sesi,
         ]);
@@ -25,8 +25,7 @@ class KirimPesanKeluarTest extends TestCase
         return AntreanPesan::create([
             'nomor_whatsapp_id' => $nomor->id,
             'pengirim' => 'Admisi',
-            'penerima' => 'Bu Ratna',
-            'penerima_telepon' => $telepon,
+            'penerima' => $telepon ?? 'Bu Ratna',   // baris lama berisi nama, bukan nomor
             'isi_pesan' => $isi,
             'keputusan' => 'Kirim',
             'maks_percobaan' => 3,
@@ -99,20 +98,23 @@ class KirimPesanKeluarTest extends TestCase
         $this->assertStringContainsString('tidak tersambung', $a->alasan_penahanan);
     }
 
-    public function test_tanpa_nomor_telepon_langsung_gagal(): void
+    public function test_penerima_yang_bukan_nomor_telepon_langsung_gagal_tanpa_percobaan_ulang(): void
     {
+        // Antrean lama menyimpan nama di kolom penerima; sejak SRS kolom ini berisi nomor.
         $a = $this->antrean('Halo', 'Tersambung', null);
 
         KirimPesanKeluar::dispatchSync($a->id);
 
-        $this->assertSame('Gagal', $a->fresh()->keputusan);
-        $this->assertSame(0, $a->fresh()->percobaan);
+        $a->refresh();
+        $this->assertSame('Gagal', $a->keputusan);
+        $this->assertSame(0, $a->percobaan);
+        $this->assertStringContainsString('tidak valid', $a->alasan_penahanan);
     }
 
     public function test_balasan_agen_di_kotak_masuk_langsung_dikirim(): void
     {
         $user = \App\Models\User::factory()->create(['role' => 'Administrator', 'status' => 'Aktif']);
-        $nomor = NomorWhatsapp::create(['nama' => 'Admisi', 'nomor' => '6281', 'status_sesi' => 'Tersambung']);
+        $nomor = NomorWhatsapp::create(['label' => 'Admisi', 'nomor' => '6281', 'status_sesi' => 'Tersambung']);
         $p = \App\Models\Percakapan::untuk($nomor, '6285711110001', 'Bu Ratna');
 
         $this->actingAs($user)->post(route('kotak-masuk.kirim'), [
@@ -121,7 +123,7 @@ class KirimPesanKeluarTest extends TestCase
         ])->assertRedirect();
 
         $antrean = AntreanPesan::firstOrFail();
-        $this->assertSame('6285711110001', $antrean->penerima_telepon);
+        $this->assertSame('6285711110001', $antrean->penerima);
         $this->assertSame('Terkirim', $antrean->keputusan);
     }
 

@@ -71,7 +71,7 @@
                                 value="{{ $nomor->id }}"
                                 @selected(old('nomor_whatsapp_id') == $nomor->id)
                             >
-                                {{ $nomor->nama }}
+                                {{ $nomor->label }}
                             </option>
                         @endforeach
                     </select>
@@ -179,7 +179,7 @@
                             </td>
 
                             <td class="py-3 px-2 text-slate-600">
-                                {{ $item->nomorWhatsapp?->nama ?? '-' }}
+                                {{ $item->nomorWhatsapp?->label ?? '-' }}
                             </td>
 
                             <td class="py-3 px-2">

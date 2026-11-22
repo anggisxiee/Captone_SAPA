@@ -24,7 +24,7 @@ class WebhookWhatsappTest extends TestCase
     private function nomor(string $sesi = 'Tersambung', string $status = 'Aktif'): NomorWhatsapp
     {
         return NomorWhatsapp::create([
-            'nama' => 'Admisi',
+            'label' => 'Admisi',
             'nomor' => '081200000001',
             'status' => $status,
             'status_sesi' => $sesi,
@@ -73,7 +73,9 @@ class WebhookWhatsappTest extends TestCase
 
         $this->assertDatabaseHas('pesan_whatsapp', [
             'percakapan_id' => $percakapan->id,
-            'pengirim' => 'pelanggan',
+            'arah' => 'masuk',
+            'jenis_pengirim' => 'pelanggan',
+            'status' => 'diterima',
             'isi' => 'Halo, ada kelas 6 SD?',
         ]);
         $this->assertNotNull($nomor->fresh()->terakhir_aktif_pada);
@@ -104,7 +106,7 @@ class WebhookWhatsappTest extends TestCase
     {
         $this->nomor();
         $this->kirimPesan();
-        Percakapan::query()->update(['status' => 'Selesai', 'belum_dibalas' => false]);
+        Percakapan::query()->update(['status' => 'Selesai', 'belum_dibaca' => 0]);
 
         $this->kirimPesan(['id_pesan' => 'wamid-2', 'isi' => 'Maaf, satu lagi.']);
 
@@ -117,7 +119,7 @@ class WebhookWhatsappTest extends TestCase
     {
         $this->nomor();
         $this->kirimPesan();
-        Percakapan::query()->update(['status' => 'Ditangani Agen', 'belum_dibalas' => false]);
+        Percakapan::query()->update(['status' => 'Ditangani Agen', 'belum_dibaca' => 0]);
 
         $this->kirimPesan(['id_pesan' => 'wamid-2']);
 
