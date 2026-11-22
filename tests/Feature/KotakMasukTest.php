@@ -27,7 +27,11 @@ class KotakMasukTest extends TestCase
 
     private function nomor(string $nama, string $nomor): NomorWhatsapp
     {
-        return NomorWhatsapp::create(['nama' => $nama, 'nomor' => $nomor]);
+        return NomorWhatsapp::create([
+            'nama' => $nama,
+            'nomor' => $nomor,
+            'status_sesi' => 'Tersambung',
+        ]);
     }
 
     private function percakapan(NomorWhatsapp $nomor, string $telepon = '6285711110001'): Percakapan

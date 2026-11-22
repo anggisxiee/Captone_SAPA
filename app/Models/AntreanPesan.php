@@ -14,6 +14,7 @@ class AntreanPesan extends Model
         'nomor_whatsapp_id',
         'pengirim',
         'penerima',
+        'penerima_telepon',
         'isi_pesan',
         'skor_risiko',
         'keputusan',

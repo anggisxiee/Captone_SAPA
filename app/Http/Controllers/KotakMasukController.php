@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\KirimPesanKeluar;
 use App\Models\AntreanPesan;
 use App\Models\LogAudit;
 use App\Models\NomorWhatsapp;
@@ -84,7 +85,7 @@ class KotakMasukController extends Controller
         $nomor = $percakapan->nomorWhatsapp;
         $kontak = $percakapan->kontak;
 
-        DB::transaction(function () use ($request, $percakapan, $nomor, $kontak) {
+        $antrean = DB::transaction(function () use ($request, $percakapan, $nomor, $kontak) {
             $percakapan->update([
                 'status' => 'Ditangani Agen',
                 'belum_dibalas' => false,
@@ -100,10 +101,11 @@ class KotakMasukController extends Controller
                 'isi' => $request->isi,
             ]);
 
-            AntreanPesan::create([
+            return AntreanPesan::create([
                 'nomor_whatsapp_id' => $nomor->id,
                 'pengirim' => $nomor->nama,
                 'penerima' => $kontak->nama,
+                'penerima_telepon' => $kontak->nomor_telepon,
                 'isi_pesan' => $request->isi,
                 'skor_risiko' => 0,
                 'keputusan' => 'Kirim',
@@ -112,6 +114,8 @@ class KotakMasukController extends Controller
                 'jadwal_kirim' => now(),
             ]);
         });
+
+        KirimPesanKeluar::dispatch($antrean->id);
 
         return redirect()
             ->route('kotak-masuk')

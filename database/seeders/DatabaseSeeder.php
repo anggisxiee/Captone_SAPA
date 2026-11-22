@@ -48,12 +48,18 @@ class DatabaseSeeder extends Seeder
 
         $admisi = NomorWhatsapp::updateOrCreate(['nomor' => '6281200000001'], [
             'nama' => 'Admisi Asentra',
+            'tujuan' => 'Admin',
             'status' => 'Aktif',
+            'status_sesi' => 'Tersambung',
+            'terakhir_aktif_pada' => now(),
         ]);
 
         $sales = NomorWhatsapp::updateOrCreate(['nomor' => '6281200000002'], [
             'nama' => 'Sales Asentra',
+            'tujuan' => 'Sales',
             'status' => 'Aktif',
+            'status_sesi' => 'Tersambung',
+            'terakhir_aktif_pada' => now(),
         ]);
 
         // Hak akses per nomor.

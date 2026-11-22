@@ -16,6 +16,7 @@ class PesanWhatsapp extends Model
         'kontak_telepon',
         'pengirim',
         'isi',
+        'wa_message_id',
     ];
 
     public function nomorWhatsapp(): BelongsTo

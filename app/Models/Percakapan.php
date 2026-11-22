@@ -10,6 +10,13 @@ class Percakapan extends Model
 {
     protected $table = 'percakapan';
 
+    // Sama dengan default di database, agar model yang baru dibuat
+    // langsung memiliki nilai yang benar.
+    protected $attributes = [
+        'status' => 'Baru',
+        'belum_dibalas' => false,
+    ];
+
     protected $fillable = [
         'nomor_whatsapp_id',
         'kontak_id',

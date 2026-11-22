@@ -216,6 +216,30 @@ Route::middleware(DemoAuth::class)->group(function () {
     )->group(function () {
 
         /*
+        | Penautan sesi nomor WhatsApp (QR)
+        */
+
+        Route::post('/nomor-whatsapp/{nomorWhatsapp}/tautkan', [
+            NomorWhatsappController::class,
+            'tautkan'
+        ])->name('nomor-whatsapp.tautkan');
+
+        Route::get('/nomor-whatsapp/{nomorWhatsapp}/sesi', [
+            NomorWhatsappController::class,
+            'statusSesi'
+        ])->name('nomor-whatsapp.sesi');
+
+        Route::post('/nomor-whatsapp/{nomorWhatsapp}/putuskan', [
+            NomorWhatsappController::class,
+            'putuskan'
+        ])->name('nomor-whatsapp.putuskan');
+
+        Route::post('/nomor-whatsapp/{nomorWhatsapp}/simulasi-pindai', [
+            NomorWhatsappController::class,
+            'simulasiPindai'
+        ])->name('nomor-whatsapp.simulasi-pindai');
+
+        /*
         | Tim dan Akses
         */
 
