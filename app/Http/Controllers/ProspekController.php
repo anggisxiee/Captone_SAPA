@@ -71,7 +71,7 @@ class ProspekController extends Controller
         ]);
 
         $validated['skor'] = $validated['skor'] ?? 0;
-        $validated['penanggung_jawab'] = session('user_id');
+        $validated['penanggung_jawab'] = auth()->id();
 
         Prospek::create($validated);
 

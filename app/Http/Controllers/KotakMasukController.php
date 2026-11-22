@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use App\Models\NomorWhatsapp;
 use App\Models\PesanWhatsapp;
+use App\Models\Percakapan;
 use App\Models\AntreanPesan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +17,7 @@ class KotakMasukController extends Controller
     public function index()
     {
         // Mengambil pengguna yang sedang login.
-        $pengguna = User::findOrFail(session('user_id'));
+        $pengguna = auth()->user();
 
         // Mengambil nomor WhatsApp berdasarkan hak akses.
         if ($pengguna->role === 'Administrator') {
@@ -63,7 +63,7 @@ class KotakMasukController extends Controller
         ]);
 
         // Mengambil pengguna yang sedang login.
-        $pengguna = User::findOrFail(session('user_id'));
+        $pengguna = auth()->user();
 
         // Mengambil nomor WhatsApp yang dipilih.
         $nomor = NomorWhatsapp::findOrFail(
@@ -94,8 +94,21 @@ class KotakMasukController extends Controller
         DB::transaction(function () use ($request, $nomor) {
 
             // 1. Menyimpan pesan ke riwayat percakapan.
+            $percakapan = Percakapan::untuk(
+                $nomor,
+                $request->kontak_telepon,
+                $request->kontak_nama
+            );
+
+            $percakapan->update([
+                'status' => 'Ditangani Agen',
+                'belum_dibalas' => false,
+                'pesan_terakhir_pada' => now(),
+            ]);
+
             PesanWhatsapp::create([
                 'nomor_whatsapp_id' => $nomor->id,
+                'percakapan_id' => $percakapan->id,
                 'kontak_nama' => $request->kontak_nama,
                 'kontak_telepon' => $request->kontak_telepon,
                 'pengirim' => 'agen',

@@ -2,14 +2,11 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Http\Request;
-
-use App\Models\User;
 
 use App\Http\Middleware\DemoAuth;
 use App\Http\Middleware\RoleAccess;
 
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TimAksesController;
 use App\Http\Controllers\NomorWhatsappController;
 use App\Http\Controllers\KotakMasukController;
@@ -26,65 +23,20 @@ use App\Http\Controllers\ProspekController;
 */
 
 Route::get('/', function () {
-    return redirect()->route('dasbor');
+    return auth()->check()
+        ? redirect(AuthController::halamanAwal(auth()->user()))
+        : redirect()->route('login');
 });
 
 /*
 |--------------------------------------------------------------------------
-| Login
+| Login dan Logout
 |--------------------------------------------------------------------------
 */
 
-Route::get('/login', function () {
-    return view('login');
-})->name('login');
-
-Route::post('/login', function (Request $request) {
-
-    $request->validate([
-        'email' => 'required|email',
-        'password' => 'required',
-    ]);
-
-    $user = User::where('email', $request->email)->first();
-
-    if (!$user || !Hash::check($request->password, $user->password)) {
-        return back()->withErrors([
-            'email' => 'Email atau password salah.',
-        ])->withInput();
-    }
-
-    if ($user->status !== 'Aktif') {
-        return back()->withErrors([
-            'email' => 'Akun Anda tidak aktif.',
-        ])->withInput();
-    }
-
-    session([
-        'demo_auth' => true,
-        'user_id' => $user->id,
-    ]);
-
-    return redirect()->route('dasbor');
-
-})->name('login.post');
-
-/*
-|--------------------------------------------------------------------------
-| Logout
-|--------------------------------------------------------------------------
-*/
-
-Route::post('/logout', function () {
-
-    session()->forget([
-        'demo_auth',
-        'user_id',
-    ]);
-
-    return redirect()->route('login');
-
-})->name('logout');
+Route::get('/login', [AuthController::class, 'tampilkanLogin'])->name('login');
+Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 /*
 |--------------------------------------------------------------------------

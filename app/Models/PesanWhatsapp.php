@@ -11,6 +11,7 @@ class PesanWhatsapp extends Model
 
     protected $fillable = [
         'nomor_whatsapp_id',
+        'percakapan_id',
         'kontak_nama',
         'kontak_telepon',
         'pengirim',
