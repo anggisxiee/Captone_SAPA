@@ -67,15 +67,41 @@ class DatabaseSeeder extends Seeder
             $sales->id => ['hak_akses' => 'Tidak ada'],
         ]);
 
-        $this->buatPercakapan($admisi, '6285711110001', 'Bu Ratna', 'Halo, bimbel kelas 6 SD ada jadwal apa saja?');
-        $this->buatPercakapan($sales, '6285711110002', 'Pak Anwar', 'Berapa biaya paket intensif UTBK?');
+        $this->buatPercakapan($admisi, '6285711110001', 'Bu Ratna', [
+            ['pelanggan', 'Halo, bimbel kelas 6 SD ada jadwal apa saja?'],
+        ], 'Baru', true);
+
+        $this->buatPercakapan($admisi, '6285711110003', 'Rina Kusuma', [
+            ['pelanggan', 'Halo admin, mau tanya biaya dan jadwal bimbel matematika kelas 8 SMP.'],
+            ['ai', 'Halo Kak Rina! Program Reguler Matematika tersedia Selasa & Kamis. Apakah ingin dijadwalkan trial gratis?'],
+        ], 'Ditangani AI', false);
+
+        $this->buatPercakapan($admisi, '6285711110004', 'Bapak Hendra', [
+            ['pelanggan', 'Besok sore saya transfer untuk pendaftarannya.'],
+            ['agen', 'Baik Pak, ditunggu ya. Terima kasih.'],
+        ], 'Ditangani Agen', false);
+
+        $this->buatPercakapan($sales, '6285711110002', 'Pak Anwar', [
+            ['pelanggan', 'Berapa biaya paket intensif UTBK?'],
+        ], 'Baru', true);
+
+        $this->buatPercakapan($sales, '6285711110005', 'Agus Wibowo', [
+            ['pelanggan', 'Boleh minta brosur program bimbel untuk kelas 12?'],
+            ['ai', 'Tentu Pak Agus, berikut brosur programnya.'],
+            ['pelanggan', 'Terima kasih, brosur sudah saya terima.'],
+        ], 'Selesai', false);
     }
 
+    /**
+     * @param  array<int, array{0: string, 1: string}>  $pesan  [pengirim, isi]
+     */
     private function buatPercakapan(
         NomorWhatsapp $nomor,
         string $telepon,
         string $nama,
-        string $isi
+        array $pesan,
+        string $status,
+        bool $belumDibalas
     ): void {
         $percakapan = Percakapan::untuk($nomor, $telepon, $nama);
 
@@ -83,18 +109,23 @@ class DatabaseSeeder extends Seeder
             return;
         }
 
-        PesanWhatsapp::create([
-            'nomor_whatsapp_id' => $nomor->id,
-            'percakapan_id' => $percakapan->id,
-            'kontak_nama' => $nama,
-            'kontak_telepon' => $telepon,
-            'pengirim' => 'pelanggan',
-            'isi' => $isi,
-        ]);
+        foreach ($pesan as $i => [$pengirim, $isi]) {
+            $m = new PesanWhatsapp([
+                'nomor_whatsapp_id' => $nomor->id,
+                'percakapan_id' => $percakapan->id,
+                'kontak_nama' => $nama,
+                'kontak_telepon' => $telepon,
+                'pengirim' => $pengirim,
+                'isi' => $isi,
+            ]);
+            $m->created_at = now()->subMinutes(30 - $i);
+            $m->save();
+        }
 
         $percakapan->update([
-            'belum_dibalas' => true,
-            'pesan_terakhir_pada' => now(),
+            'status' => $status,
+            'belum_dibalas' => $belumDibalas,
+            'pesan_terakhir_pada' => now()->subMinutes(30 - count($pesan)),
         ]);
     }
 }

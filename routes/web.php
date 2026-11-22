@@ -86,6 +86,11 @@ Route::middleware(DemoAuth::class)->group(function () {
         'kirimPesan'
     ])->name('kotak-masuk.kirim');
 
+    Route::patch('/kotak-masuk/percakapan/{percakapan}/status', [
+        KotakMasukController::class,
+        'ubahStatus'
+    ])->name('kotak-masuk.status');
+
     /*
     |--------------------------------------------------------------------------
     | Akses Supervisor dan Administrator

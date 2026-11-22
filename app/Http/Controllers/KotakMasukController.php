@@ -2,104 +2,89 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\NomorWhatsapp;
-use App\Models\PesanWhatsapp;
-use App\Models\Percakapan;
 use App\Models\AntreanPesan;
+use App\Models\LogAudit;
+use App\Models\NomorWhatsapp;
+use App\Models\Percakapan;
+use App\Models\PesanWhatsapp;
+use App\Models\Prospek;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class KotakMasukController extends Controller
 {
+    private const HAK_MEMBALAS = ['Balas chat', 'Kelola'];
+
     /**
      * Menampilkan halaman Kotak Masuk.
      */
     public function index()
     {
-        // Mengambil pengguna yang sedang login.
         $pengguna = auth()->user();
 
-        // Mengambil nomor WhatsApp berdasarkan hak akses.
-        if ($pengguna->role === 'Administrator') {
-            $nomorWhatsapp = NomorWhatsapp::orderBy('nama')->get();
-        } else {
-            $nomorWhatsapp = $pengguna->nomorWhatsapp()
-                ->wherePivotIn('hak_akses', [
-                    'Lihat saja',
-                    'Balas chat',
-                    'Kelola',
-                ])
-                ->orderBy('nama')
-                ->get();
-        }
+        $nomorWhatsapp = $this->nomorDapatDilihat($pengguna);
+        $nomorBolehBalas = $this->nomorBolehBalas($pengguna);
 
-        // Mengambil pesan dari nomor WhatsApp yang dapat diakses.
-        $pesanTersimpan = PesanWhatsapp::whereIn(
-            'nomor_whatsapp_id',
-            $nomorWhatsapp->pluck('id')
-        )
-            ->orderBy('created_at')
+        $percakapan = Percakapan::with([
+            'kontak',
+            'nomorWhatsapp',
+            'pesan' => fn ($q) => $q->orderBy('created_at')->orderBy('id'),
+        ])
+            ->whereIn('nomor_whatsapp_id', $nomorWhatsapp->pluck('id'))
+            ->orderByDesc('pesan_terakhir_pada')
+            ->orderByDesc('id')
             ->get();
+
+        $prospek = Prospek::whereIn(
+            'nomor_telepon',
+            $percakapan->pluck('kontak.nomor_telepon')
+        )->get()->keyBy('nomor_telepon');
+
+        $daftar = $percakapan
+            ->map(fn (Percakapan $p) => $this->ubahKeBentukTampilan(
+                $p,
+                $prospek->get($p->kontak->nomor_telepon)
+            ))
+            ->values()
+            ->all();
+
+        // Percakapan yang dipilih kembali setelah membalas atau mengubah status.
+        $idTerpilih = session('percakapan_terpilih');
+        $chatAwal = collect($daftar)->firstWhere('id', $idTerpilih)
+            ?? ($daftar[0] ?? null);
 
         return view('kotak-masuk', [
             'penggunaLogin' => $pengguna,
             'nomorWhatsapp' => $nomorWhatsapp,
-            'pesanTersimpan' => $pesanTersimpan,
+            'nomorBolehBalas' => $nomorBolehBalas,
+            'daftar' => $daftar,
+            'chatAwal' => $chatAwal,
+            'jumlahBelumDibalas' => $percakapan->where('belum_dibalas', true)->count(),
         ]);
     }
 
     /**
-     * Menyimpan pesan balasan agen
-     * dan memasukkannya ke antrean pesan.
+     * Menyimpan pesan balasan agen dan memasukkannya ke antrean pesan.
      */
     public function kirimPesan(Request $request)
     {
-        // Validasi data pesan.
         $request->validate([
-            'nomor_whatsapp_id' => 'required|exists:nomor_whatsapp,id',
-            'kontak_nama' => 'required|string|max:255',
-            'kontak_telepon' => 'required|string|max:30',
+            'percakapan_id' => 'required|exists:percakapan,id',
             'isi' => 'required|string|max:5000',
         ]);
 
-        // Mengambil pengguna yang sedang login.
-        $pengguna = auth()->user();
+        $percakapan = Percakapan::with(['kontak', 'nomorWhatsapp'])
+            ->findOrFail($request->percakapan_id);
 
-        // Mengambil nomor WhatsApp yang dipilih.
-        $nomor = NomorWhatsapp::findOrFail(
-            $request->nomor_whatsapp_id
-        );
+        $this->pastikanBolehMembalas(auth()->user(), $percakapan);
 
-        // Memeriksa hak akses selain Administrator.
-        if ($pengguna->role !== 'Administrator') {
+        $nomor = $percakapan->nomorWhatsapp;
+        $kontak = $percakapan->kontak;
 
-            $akses = $pengguna->nomorWhatsapp()
-                ->where('nomor_whatsapp.id', $nomor->id)
-                ->first();
-
-            // Hanya pengguna dengan hak Balas chat atau Kelola
-            // yang boleh membalas pesan.
-            if (
-                !$akses ||
-                !in_array($akses->pivot->hak_akses, [
-                    'Balas chat',
-                    'Kelola',
-                ])
-            ) {
-                abort(403, 'Kamu tidak memiliki izin membalas pesan.');
-            }
-        }
-
-        // Menyimpan pesan dan antrean dalam satu transaksi.
-        DB::transaction(function () use ($request, $nomor) {
-
-            // 1. Menyimpan pesan ke riwayat percakapan.
-            $percakapan = Percakapan::untuk(
-                $nomor,
-                $request->kontak_telepon,
-                $request->kontak_nama
-            );
-
+        DB::transaction(function () use ($request, $percakapan, $nomor, $kontak) {
             $percakapan->update([
                 'status' => 'Ditangani Agen',
                 'belum_dibalas' => false,
@@ -109,17 +94,16 @@ class KotakMasukController extends Controller
             PesanWhatsapp::create([
                 'nomor_whatsapp_id' => $nomor->id,
                 'percakapan_id' => $percakapan->id,
-                'kontak_nama' => $request->kontak_nama,
-                'kontak_telepon' => $request->kontak_telepon,
+                'kontak_nama' => $kontak->nama,
+                'kontak_telepon' => $kontak->nomor_telepon,
                 'pengirim' => 'agen',
                 'isi' => $request->isi,
             ]);
 
-            // 2. Memasukkan pesan ke antrean pengiriman.
             AntreanPesan::create([
                 'nomor_whatsapp_id' => $nomor->id,
                 'pengirim' => $nomor->nama,
-                'penerima' => $request->kontak_nama,
+                'penerima' => $kontak->nama,
                 'isi_pesan' => $request->isi,
                 'skor_risiko' => 0,
                 'keputusan' => 'Kirim',
@@ -129,16 +113,136 @@ class KotakMasukController extends Controller
             ]);
         });
 
-        // Kembali ke halaman Kotak Masuk.
         return redirect()
             ->route('kotak-masuk')
-            ->with(
-                'success',
-                'Pesan berhasil disimpan dan dimasukkan ke antrean.'
-            )
-            ->with('chat_terpilih', [
-                'nomorId' => $nomor->id,
-                'telepon' => $request->kontak_telepon,
-            ]);
+            ->with('success', 'Pesan berhasil disimpan dan dimasukkan ke antrean.')
+            ->with('percakapan_terpilih', $percakapan->id);
+    }
+
+    /**
+     * Mengubah status percakapan: ambil alih, kembalikan ke AI, atau selesai.
+     */
+    public function ubahStatus(Request $request, Percakapan $percakapan)
+    {
+        $request->validate([
+            'status' => 'required|in:Ditangani Agen,Ditangani AI,Selesai',
+        ]);
+
+        $this->pastikanBolehMembalas(auth()->user(), $percakapan);
+
+        $lama = $percakapan->status;
+        $percakapan->update(['status' => $request->status]);
+
+        LogAudit::catat(
+            'Ubah status percakapan',
+            "Percakapan #{$percakapan->id}: {$lama} → {$request->status}",
+            'Percakapan'
+        );
+
+        return redirect()
+            ->route('kotak-masuk')
+            ->with('success', 'Status percakapan diubah menjadi "' . $request->status . '".')
+            ->with('percakapan_terpilih', $percakapan->id);
+    }
+
+    /**
+     * Nomor WhatsApp yang boleh dilihat pengguna.
+     */
+    private function nomorDapatDilihat(User $pengguna): Collection
+    {
+        if ($pengguna->role === 'Administrator') {
+            return NomorWhatsapp::orderBy('nama')->get();
+        }
+
+        return $pengguna->nomorWhatsapp()
+            ->wherePivotIn('hak_akses', ['Lihat saja', ...self::HAK_MEMBALAS])
+            ->orderBy('nama')
+            ->get();
+    }
+
+    /**
+     * ID nomor WhatsApp yang boleh dipakai pengguna untuk membalas.
+     */
+    private function nomorBolehBalas(User $pengguna): array
+    {
+        if ($pengguna->role === 'Administrator') {
+            return NomorWhatsapp::pluck('id')->map(fn ($id) => (int) $id)->all();
+        }
+
+        return $pengguna->nomorWhatsapp()
+            ->wherePivotIn('hak_akses', self::HAK_MEMBALAS)
+            ->pluck('nomor_whatsapp.id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    private function pastikanBolehMembalas(User $pengguna, Percakapan $percakapan): void
+    {
+        if (!in_array((int) $percakapan->nomor_whatsapp_id, $this->nomorBolehBalas($pengguna), true)) {
+            abort(403, 'Kamu tidak memiliki izin membalas pesan.');
+        }
+    }
+
+    /**
+     * Mengubah satu percakapan menjadi struktur yang dipakai view.
+     */
+    private function ubahKeBentukTampilan(Percakapan $p, ?Prospek $prospek): array
+    {
+        $kontak = $p->kontak;
+
+        [$label, $warna] = match (true) {
+            $p->belum_dibalas => ['Belum dibalas', 'b-amber'],
+            $p->status === 'Ditangani AI' => ['Ditangani AI', 'b-green'],
+            $p->status === 'Ditangani Agen' => ['Ditangani agen', 'b-slate'],
+            $p->status === 'Selesai' => ['Selesai', 'b-slate'],
+            default => ['Baru', 'b-amber'],
+        };
+
+        $pesan = $p->pesan->map(fn (PesanWhatsapp $m) => [
+            'pengirim' => $m->pengirim,
+            'isi' => $m->isi,
+            'jam' => $m->created_at?->format('H:i') ?? '',
+        ])->all();
+
+        $terakhir = $p->pesan->last();
+
+        return [
+            'id' => $p->id,
+            'nama' => $kontak->nama,
+            'telepon' => $kontak->nomor_telepon,
+            'jam' => $this->formatWaktu($p->pesan_terakhir_pada),
+            'cuplikan' => $terakhir->isi ?? 'Belum ada pesan.',
+            'nomor' => $p->nomorWhatsapp->nama,
+            'nomorId' => $p->nomor_whatsapp_id,
+            'status' => $label,
+            'statusAsli' => $p->status,
+            'belumDibalas' => $p->belum_dibalas,
+            'warna' => $warna,
+            'jenjang' => trim(($kontak->jenjang ?? '') . ' ' . ($kontak->kelas ?? '')) ?: '-',
+            'mapel' => $kontak->mapel ?: '-',
+            'cabang' => '-',
+            'sumber' => $prospek?->sumber ?: '-',
+            'tahap' => $prospek ? ucfirst($prospek->tahap) : '-',
+            'skor' => $prospek ? "{$prospek->skor} / 100" : '-',
+            // Diisi pada Sprint 2 (klasifikasi maksud dan jawaban AI).
+            'maksud' => '-',
+            'keyakinan' => '-',
+            'ambang' => '-',
+            'artikel' => '-',
+            'pesan' => $pesan,
+        ];
+    }
+
+    private function formatWaktu(?Carbon $waktu): string
+    {
+        if (!$waktu) {
+            return '';
+        }
+
+        if ($waktu->isToday()) {
+            return $waktu->format('H:i');
+        }
+
+        return $waktu->isYesterday() ? 'Kemarin' : $waktu->format('d/m');
     }
 }
