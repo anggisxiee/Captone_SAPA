@@ -168,4 +168,16 @@ class NomorWhatsappSesiTest extends TestCase
             ->assertDontSee('@click="mulaiTautan(', false)
             ->assertDontSee('Simulasikan pindai');
     }
+
+    public function test_qr_dirender_oleh_pustaka_asli_bukan_placeholder(): void
+    {
+        $nomor = $this->nomor();
+
+        $svg = $this->actingAs($this->admin())
+            ->postJson(route('nomor-whatsapp.tautkan', $nomor))
+            ->json('qr_svg');
+
+        $this->assertStringNotContainsString('Pratinjau QR', $svg);
+        $this->assertStringContainsString('<svg', $svg);
+    }
 }

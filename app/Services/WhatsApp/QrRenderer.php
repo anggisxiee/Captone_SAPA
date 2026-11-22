@@ -3,8 +3,8 @@
 namespace App\Services\WhatsApp;
 
 /**
- * Mengubah isi QR menjadi SVG. Memakai bacon/qr-code bila terpasang
- * (composer require bacon/qr-code); jika belum, menampilkan kotak
+ * Mengubah isi QR menjadi SVG. Memakai bacon/bacon-qr-code bila terpasang
+ * (composer require bacon/bacon-qr-code); jika belum, menampilkan kotak
  * pengganti agar alur penautan tetap bisa diuji.
  */
 class QrRenderer
@@ -27,7 +27,7 @@ class QrRenderer
   <rect width="200" height="200" fill="#f1f5f9" stroke="#94a3b8" stroke-dasharray="6 4"/>
   <text x="100" y="86" text-anchor="middle" font-size="12" fill="#475569">Pratinjau QR (mode uji)</text>
   <text x="100" y="108" text-anchor="middle" font-size="8" fill="#64748b">{$teks}</text>
-  <text x="100" y="130" text-anchor="middle" font-size="8" fill="#94a3b8">pasang bacon/qr-code untuk QR asli</text>
+  <text x="100" y="130" text-anchor="middle" font-size="8" fill="#94a3b8">pasang bacon/bacon-qr-code untuk QR asli</text>
 </svg>
 SVG;
     }

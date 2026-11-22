@@ -53,8 +53,8 @@ Driver diatur dengan `WHATSAPP_DRIVER` di `.env`.
 | `fake` (bawaan) | Simulasi. Pesan keluar hanya dicatat di `storage/logs/laravel.log`. Pada halaman Nomor WhatsApp ada tombol "Simulasikan pindai (mode uji)". Teks `[gagal]` pada pesan memicu jalur gagal kirim. |
 
 Driver sungguhan belum ada; tambahkan di `App\Providers\AppServiceProvider`.
-Kode QR tampil sebagai kotak pengganti sampai paket `bacon/qr-code` dipasang
-(`composer require bacon/qr-code`).
+Kode QR tampil sebagai kotak pengganti sampai paket `bacon/bacon-qr-code` dipasang
+(`composer require bacon/bacon-qr-code`).
 
 ### Webhook (dipanggil oleh gateway)
 
