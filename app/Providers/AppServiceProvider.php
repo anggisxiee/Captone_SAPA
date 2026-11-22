@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Services\WhatsApp\FakeWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppGateway;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\ServiceProvider;
 use InvalidArgumentException;
 
@@ -29,6 +30,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Teks waktu relatif ("3 menit yang lalu") dalam bahasa Indonesia.
+        // Tidak memakai APP_LOCALE=id karena belum ada berkas terjemahan validasi.
+        Carbon::setLocale('id');
     }
 }

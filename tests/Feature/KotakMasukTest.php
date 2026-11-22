@@ -263,4 +263,20 @@ class KotakMasukTest extends TestCase
 
         $this->assertDatabaseCount('percakapan', 0);
     }
+
+    public function test_notifikasi_sukses_hanya_tampil_sekali(): void
+    {
+        $user = $this->agen();
+        $nomor = $this->nomor('Admisi', '6281');
+        $user->nomorWhatsapp()->attach($nomor->id, ['hak_akses' => 'Balas chat']);
+        $p = $this->percakapan($nomor);
+
+        $html = $this->actingAs($user)
+            ->followingRedirects()
+            ->post(route('kotak-masuk.kirim'), $this->payload($p))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertSame(1, substr_count($html, 'Pesan berhasil disimpan dan dimasukkan ke antrean.'));
+    }
 }

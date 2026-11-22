@@ -152,9 +152,7 @@ class NomorWhatsappSesiTest extends TestCase
             ->get(route('nomor-whatsapp'))
             ->assertOk()
             ->assertSee('Belum tertaut')
-            ->assertSee('Simulasikan pindai')
-            // Tombol pada kartu memanggil mulaiTautan dengan data nomor.
-            ->assertSee('@click="mulaiTautan(', false);
+            ->assertSee('Simulasikan pindai');
     }
 
     public function test_supervisor_tidak_melihat_tombol_tautkan_pada_kartu(): void
@@ -165,8 +163,8 @@ class NomorWhatsappSesiTest extends TestCase
         $this->actingAs($sup)
             ->get(route('nomor-whatsapp'))
             ->assertOk()
-            ->assertDontSee('@click="mulaiTautan(', false)
-            ->assertDontSee('Simulasikan pindai');
+            ->assertDontSee('Simulasikan pindai')
+            ->assertDontSee('Tautkan ulang');
     }
 
     public function test_qr_dirender_oleh_pustaka_asli_bukan_placeholder(): void
@@ -179,5 +177,31 @@ class NomorWhatsappSesiTest extends TestCase
 
         $this->assertStringNotContainsString('Pratinjau QR', $svg);
         $this->assertStringContainsString('<svg', $svg);
+    }
+
+    /**
+     * Atribut @click yang dirender harus utuh. Dulu @js di dalam atribut
+     * berkutip tunggal memotong atribut di "JSON.parse(" sehingga tombol
+     * Kelola, Hapus, dan Tautkan tidak berfungsi.
+     */
+    public function test_atribut_klik_pada_kartu_nomor_utuh(): void
+    {
+        $this->nomor(['nama' => 'Belum Tertaut']);
+
+        $html = $this->actingAs($this->admin())
+            ->get(route('nomor-whatsapp'))
+            ->assertOk()
+            ->getContent();
+
+        foreach (['mulaiTautan', 'bukaEdit', 'bukaHapus'] as $fungsi) {
+            $this->assertMatchesRegularExpression(
+                '/@click="' . $fungsi . '\\(JSON\\.parse\\(.+?\\)\\)"/',
+                $html,
+                "Tombol {$fungsi} tidak dirender dengan benar"
+            );
+        }
+
+        // Tidak ada atribut @click berkutip tunggal yang memuat JSON.parse.
+        $this->assertDoesNotMatchRegularExpression("/@click='[^']*JSON\\.parse/", $html);
     }
 }

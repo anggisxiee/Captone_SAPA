@@ -173,7 +173,7 @@ class="text-xs">
                             </form>
                         @else
                             <button
-                                @click='mulaiTautan(@js(["id" => $item->id, "nama" => $item->nama, "nomor" => $item->nomor]))'
+                                @click="mulaiTautan(@js(['id' => $item->id, 'nama' => $item->nama, 'nomor' => $item->nomor]))"
                                 class="btn btn-primary !text-[10px] !px-2.5 !py-1">
                                 {{ $item->status_sesi === 'Belum tertaut' ? 'Tautkan' : 'Tautkan ulang' }}
                             </button>
@@ -182,7 +182,7 @@ class="text-xs">
 
                     {{-- Kelola --}}
                     <button
-                        @click='bukaEdit(@js(["id" => $item->id, "nama" => $item->nama, "nomor" => $item->nomor, "tujuan" => $item->tujuan]))'
+                        @click="bukaEdit(@js(['id' => $item->id, 'nama' => $item->nama, 'nomor' => $item->nomor, 'tujuan' => $item->tujuan]))"
                         class="btn btn-outline !text-[10px] !px-2.5 !py-1">
                         Kelola
                     </button>
@@ -201,7 +201,7 @@ class="text-xs">
 
                     {{-- Hapus --}}
                     <button
-                        @click='bukaHapus(@js(["id" => $item->id, "nama" => $item->nama]))'
+                        @click="bukaHapus(@js(['id' => $item->id, 'nama' => $item->nama]))"
                         class="btn btn-danger !text-[10px] !px-2.5 !py-1">
                         Hapus
                     </button>
@@ -301,7 +301,7 @@ class="text-xs">
                 Kelola nomor WhatsApp
             </h3>
 
-            <form :action="'/nomor-whatsapp/' + target.id" method="POST">
+            <form :action="'/nomor-whatsapp/' + target?.id" method="POST">
                 @csrf
                 @method('PUT')
 
@@ -363,7 +363,7 @@ class="text-xs">
                 akan dihapus dari daftar.
             </p>
 
-            <form :action="'/nomor-whatsapp/' + target.id" method="POST">
+            <form :action="'/nomor-whatsapp/' + target?.id" method="POST">
                 @csrf
                 @method('DELETE')
 
