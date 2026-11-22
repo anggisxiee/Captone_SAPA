@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\WhatsApp\BaileysWhatsAppGateway;
 use App\Services\WhatsApp\FakeWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppGateway;
 use Illuminate\Support\Carbon;
@@ -18,6 +19,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(WhatsAppGateway::class, function () {
             return match (config('whatsapp.driver')) {
                 'fake' => new FakeWhatsAppGateway(),
+                'baileys' => new BaileysWhatsAppGateway(),
                 default => throw new InvalidArgumentException(
                     'Driver WhatsApp tidak dikenal: ' . config('whatsapp.driver')
                 ),

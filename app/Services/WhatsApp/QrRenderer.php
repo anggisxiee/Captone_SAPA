@@ -13,7 +13,7 @@ class QrRenderer
     {
         if (class_exists(\BaconQrCode\Writer::class)) {
             $renderer = new \BaconQrCode\Renderer\ImageRenderer(
-                new \BaconQrCode\Renderer\RendererStyle\RendererStyle(200, 1),
+                new \BaconQrCode\Renderer\RendererStyle\RendererStyle(280, 2),
                 new \BaconQrCode\Renderer\Image\SvgImageBackEnd()
             );
 

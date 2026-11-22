@@ -28,6 +28,10 @@
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
+        <!-- Tes tidak boleh menyentuh gateway WhatsApp sungguhan, apa pun isi .env. -->
+        <env name="WHATSAPP_DRIVER" value="fake"/>
+        <env name="WHATSAPP_WEBHOOK_TOKEN" value=""/>
+        <env name="WHATSAPP_GATEWAY_URL" value="http://127.0.0.1:1"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>

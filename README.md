@@ -21,7 +21,8 @@ php artisan migrate --seed              # skema + data demo
 npm run build                           # atau `npm run dev` saat mengubah tampilan
 ```
 
-Lalu jalankan tiga proses (atau cukup `composer dev`):
+Lalu jalankan tiga proses (atau cukup `composer dev`). Bila memakai gateway Baileys
+(WhatsApp sungguhan), jalankan juga gateway-nya, lihat bagian "Gateway WhatsApp" di bawah:
 
 ```bash
 php artisan serve          # aplikasi di http://127.0.0.1:8000
@@ -50,11 +51,23 @@ Driver diatur dengan `WHATSAPP_DRIVER` di `.env`.
 
 | Driver | Keterangan |
 |---|---|
-| `fake` (bawaan) | Simulasi. Pesan keluar hanya dicatat di `storage/logs/laravel.log`. Pada halaman Nomor WhatsApp ada tombol "Simulasikan pindai (mode uji)". Teks `[gagal]` pada pesan memicu jalur gagal kirim. |
+| `fake` (bawaan) | Simulasi, tanpa WhatsApp sungguhan. Pesan keluar hanya dicatat di `storage/logs/laravel.log`. Halaman Nomor WhatsApp menampilkan tombol "Simulasikan pindai (mode uji)". Teks `[gagal]` pada pesan memicu jalur gagal kirim. |
+| `baileys` | WhatsApp sungguhan lewat layanan **`wa-gateway/`** (Node.js + Baileys) di repo ini. Lihat [`wa-gateway/README.md`](wa-gateway/README.md). |
 
-Driver sungguhan belum ada; tambahkan di `App\Providers\AppServiceProvider`.
-Kode QR tampil sebagai kotak pengganti sampai paket `bacon/bacon-qr-code` dipasang
-(`composer require bacon/bacon-qr-code`).
+Menjalankan dengan driver `baileys`:
+
+```bash
+# 1) gateway
+cd wa-gateway && npm install && cp .env.example .env     # isi GATEWAY_TOKEN
+npm start
+
+# 2) Laravel (.env)
+WHATSAPP_DRIVER=baileys
+WHATSAPP_WEBHOOK_TOKEN=<sama dengan GATEWAY_TOKEN>
+WHATSAPP_GATEWAY_URL=http://127.0.0.1:3001
+```
+
+Jalur ini **tidak resmi** (WhatsApp Web), jadi nomor bisa dibatasi WhatsApp. Gunakan nomor uji, bukan nomor mitra.
 
 ### Webhook (dipanggil oleh gateway)
 
@@ -63,7 +76,7 @@ Semua permintaan wajib memakai header `X-Gateway-Token` = `WHATSAPP_WEBHOOK_TOKE
 | Endpoint | Fungsi |
 |---|---|
 | `POST /api/webhook/whatsapp/pesan` | Pesan pelanggan masuk: `nomor`, `dari`, `isi`, opsional `nama`, `id_pesan` |
-| `POST /api/webhook/whatsapp/sesi` | Status sesi: `nomor`, `status` (`tersambung` / `terputus` / `gagal`), opsional `alasan` |
+| `POST /api/webhook/whatsapp/sesi` | Status sesi: `nomor`, `status` (`tersambung` / `terputus` / `gagal` / `qr`), opsional `alasan`; `qr` wajib bila status `qr` |
 
 Contoh:
 
@@ -91,7 +104,8 @@ Login ditahan 5 menit setelah 5 kali gagal.
 ## Pengujian
 
 ```bash
-php artisan test
+php artisan test            # Laravel
+cd wa-gateway && npm test   # gateway Node (tanpa perlu Baileys terpasang)
 ```
 
 | Berkas tes | Cakupan |
@@ -101,12 +115,14 @@ php artisan test
 | `WebhookWhatsappTest` | Pesan masuk, duplikat, token, sesi |
 | `KirimPesanKeluarTest` | Pengiriman, percobaan ulang, pusat risiko |
 | `NomorWhatsappSesiTest` | Penautan QR, kedaluwarsa, putus (TC11) |
+| `BaileysGatewayTest` | Driver `baileys` (gateway dipalsukan), event QR, gateway mati |
 | `HalamanTest` | Semua halaman terbuka sesuai role |
 
 ## Struktur penting
 
 ```
-app/Services/WhatsApp/   gateway, sesi nomor, pesan masuk, QR
+app/Services/WhatsApp/   gateway (fake, baileys), sesi nomor, pesan masuk, QR
+wa-gateway/              layanan Node.js + Baileys (proses terpisah)
 app/Jobs/                KirimPesanKeluar
 app/Http/Controllers/    controller web; Api/ untuk webhook
 routes/web.php           halaman    routes/api.php  webhook

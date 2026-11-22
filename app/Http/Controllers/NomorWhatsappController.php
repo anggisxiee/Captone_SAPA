@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\GatewayException;
+use App\Exceptions\SudahTersambungException;
 use App\Models\NomorWhatsapp;
 use App\Services\WhatsApp\QrRenderer;
 use App\Services\WhatsApp\SesiNomor;
@@ -106,7 +108,14 @@ class NomorWhatsappController extends Controller
             return response()->json(['pesan' => 'Aktifkan nomor terlebih dahulu.'], 422);
         }
 
-        $sesi->mulaiTautan($nomorWhatsapp);
+        try {
+            $sesi->mulaiTautan($nomorWhatsapp);
+        } catch (SudahTersambungException) {
+            // Sesi di gateway masih hidup; selaraskan status di SAPA.
+            $sesi->tandaiTersambung($nomorWhatsapp);
+        } catch (GatewayException $e) {
+            return response()->json(['pesan' => $e->getMessage()], 502);
+        }
 
         return response()->json($this->keadaanSesi($nomorWhatsapp->fresh()));
     }

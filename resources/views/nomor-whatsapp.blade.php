@@ -393,7 +393,7 @@ class="text-xs">
                 Nomor target: <span x-text="qr.nama"></span> (<span x-text="qr.nomor"></span>)
             </p>
 
-            <div class="grid grid-cols-[1fr_200px] gap-5 mt-4">
+            <div class="grid grid-cols-[1fr_280px] gap-5 mt-4">
 
                 <ol class="space-y-2.5 text-[11px] text-slate-700">
                     <li><span class="text-teal-700 font-semibold">1.</span> Buka WhatsApp di ponsel nomor tersebut.</li>
@@ -403,7 +403,7 @@ class="text-xs">
                 </ol>
 
                 <div>
-                    <div class="w-[200px] h-[200px] bg-slate-50 border border-slate-200 relative">
+                    <div class="w-[280px] h-[280px] bg-white border border-slate-200 relative">
                         <div x-html="qr.svg" :class="qr.kedaluwarsa ? 'opacity-20' : ''"></div>
                         <div x-show="!qr.svg" class="absolute inset-0 flex items-center justify-center text-[10px] text-slate-400">
                             Membuat kode…

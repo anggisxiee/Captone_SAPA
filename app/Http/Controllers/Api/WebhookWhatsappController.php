@@ -52,20 +52,31 @@ class WebhookWhatsappController extends Controller
     }
 
     /**
-     * Perubahan status sesi dari gateway: tersambung, terputus, atau gagal.
+     * Perubahan status sesi dari gateway: tersambung, terputus, gagal,
+     * atau qr (kode QR terbaru selama penautan).
      */
     public function sesi(Request $request, SesiNomor $sesi): JsonResponse
     {
         $data = $request->validate([
             'nomor' => 'required|string|max:30',
-            'status' => 'required|in:tersambung,terputus,gagal',
+            'status' => 'required|in:tersambung,terputus,gagal,qr',
             'alasan' => 'nullable|string|max:500',
+            'qr' => 'required_if:status,qr|nullable|string|max:2000',
         ]);
 
         $nomor = $this->cariNomor($data['nomor']);
 
         if (!$nomor) {
             return response()->json(['pesan' => 'Nomor WhatsApp tidak dikenal.'], 404);
+        }
+
+        if ($data['status'] === 'qr') {
+            $diterima = $sesi->perbaruiQr($nomor, $data['qr']);
+
+            return response()->json([
+                'pesan' => $diterima ? 'QR diperbarui.' : 'QR diabaikan: nomor tidak sedang menunggu QR.',
+                'diabaikan' => !$diterima,
+            ]);
         }
 
         match ($data['status']) {

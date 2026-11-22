@@ -33,6 +33,22 @@ class SesiNomor
         return $nomor;
     }
 
+    /**
+     * WhatsApp memutar kode QR sekitar tiap 20 detik; gateway meneruskan
+     * kode terbarunya. Hanya diterima selama nomor memang menunggu QR dan
+     * masa berlakunya belum habis.
+     */
+    public function perbaruiQr(NomorWhatsapp $nomor, string $qr): bool
+    {
+        if ($nomor->status_sesi !== 'Menunggu QR' || $nomor->qrKedaluwarsa()) {
+            return false;
+        }
+
+        $nomor->update(['qr_token' => $qr]);
+
+        return true;
+    }
+
     public function tandaiTersambung(NomorWhatsapp $nomor): void
     {
         $nomor->update([

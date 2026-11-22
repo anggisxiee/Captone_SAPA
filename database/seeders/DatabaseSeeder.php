@@ -46,20 +46,26 @@ class DatabaseSeeder extends Seeder
             'status' => 'Nonaktif',
         ]);
 
+        // Dengan driver fake, nomor demo langsung "Tersambung". Dengan gateway
+        // sungguhan tidak ada sesi sama sekali sampai QR dipindai, jadi mulai
+        // dari "Belum tertaut" agar status tidak menyesatkan.
+        $sesiAwal = config('whatsapp.driver') === 'fake' ? 'Tersambung' : 'Belum tertaut';
+        $aktifAwal = $sesiAwal === 'Tersambung' ? now() : null;
+
         $admisi = NomorWhatsapp::updateOrCreate(['nomor' => '6281200000001'], [
             'nama' => 'Admisi Asentra',
             'tujuan' => 'Admin',
             'status' => 'Aktif',
-            'status_sesi' => 'Tersambung',
-            'terakhir_aktif_pada' => now(),
+            'status_sesi' => $sesiAwal,
+            'terakhir_aktif_pada' => $aktifAwal,
         ]);
 
         $sales = NomorWhatsapp::updateOrCreate(['nomor' => '6281200000002'], [
             'nama' => 'Sales Asentra',
             'tujuan' => 'Sales',
             'status' => 'Aktif',
-            'status_sesi' => 'Tersambung',
-            'terakhir_aktif_pada' => now(),
+            'status_sesi' => $sesiAwal,
+            'terakhir_aktif_pada' => $aktifAwal,
         ]);
 
         // Hak akses per nomor.
