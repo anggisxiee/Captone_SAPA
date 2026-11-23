@@ -21,6 +21,14 @@ return [
     // Batas waktu satu pemanggilan (detik). Lewat batas ini sistem beralih ke mode aturan bawaan.
     'timeout' => (int) env('AI_TIMEOUT', 20),
 
+    // Memproses pesan pelanggan yang masuk dengan mesin jawaban (saran atau balasan otomatis,
+    // sesuai mode AI tiap nomor). Matikan untuk menjalankan SAPA tanpa AI.
+    'proses_pesan_masuk' => (bool) env('AI_PROSES_PESAN_MASUK', true),
+
+    // Pengaman sementara sebelum mesin anti-ban (Sprint 3): jumlah balasan otomatis AI per
+    // percakapan per jam. Lewat batas ini AI berhenti dan percakapan diserahkan ke agen.
+    'maks_balasan_per_jam' => (int) env('AI_MAKS_BALASAN_PER_JAM', 6),
+
     // Artikel dengan skor relevansi di bawah ambang ini tidak dipakai AI (mockup halaman Basis Pengetahuan).
     'ambang_relevansi' => (float) env('AI_AMBANG_RELEVANSI', 0.70),
 ];

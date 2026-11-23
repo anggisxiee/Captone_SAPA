@@ -180,6 +180,21 @@
                 </p>
             </div>
 
+            <div>
+                <label class="label !text-[10px]">
+                    Nomor uji balasan otomatis
+                </label>
+
+                <input type="text" name="nomor_uji"
+                       class="field !text-[10px] !py-1.5"
+                       value="{{ old('nomor_uji', $pengaturanAI->nomor_uji) }}"
+                       placeholder="081234567890, 081298765432">
+
+                <p class="text-[9px] text-slate-400 mt-1">
+                    Pada nomor ber-Mode AI "Otomatis", AI hanya membalas sendiri ke nomor pelanggan di daftar ini; pelanggan lain hanya mendapat saran. Kosong = semua pelanggan dibalas otomatis.
+                </p>
+            </div>
+
         </div>
 
 

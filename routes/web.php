@@ -84,6 +84,11 @@ Route::middleware(DemoAuth::class)->group(function () {
         'index'
     ])->name('kotak-masuk');
 
+    Route::get('/kotak-masuk/data', [
+        KotakMasukController::class,
+        'data'
+    ])->name('kotak-masuk.data');
+
     Route::post('/kotak-masuk/kirim', [
         KotakMasukController::class,
         'kirimPesan'

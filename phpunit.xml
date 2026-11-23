@@ -35,6 +35,7 @@
         <!-- Tes tidak boleh memanggil penyedia AI sungguhan, apa pun isi .env. -->
         <env name="AI_DRIVER" value="fake"/>
         <env name="AI_API_KEY" value=""/>
+        <env name="AI_PROSES_PESAN_MASUK" value="false"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>

@@ -9,6 +9,7 @@ use App\Models\PengaturanAI;
 use App\Services\Ai\KonfigurasiAi;
 use App\Services\Ai\MesinJawaban;
 use App\Services\Ai\OpenAiCompatibleClient;
+use App\Support\Telepon;
 use Illuminate\Http\Request;
 
 class PengaturanAIController extends Controller
@@ -35,6 +36,7 @@ class PengaturanAIController extends Controller
             'jam_mulai' => '07:00',
             'jam_selesai' => '21:00',
             'variasi_kalimat' => true,
+            'nomor_uji' => null,
         ];
     }
 
@@ -49,6 +51,12 @@ class PengaturanAIController extends Controller
 
     public function update(Request $request)
     {
+        // Daftar nomor uji: dipisah koma/spasi/baris, diseragamkan ke 62xxx.
+        if (is_string($request->nomor_uji)) {
+            $daftar = preg_split('/[,;\n]+/', $request->nomor_uji, -1, PREG_SPLIT_NO_EMPTY);
+            $request->merge(['nomor_uji' => implode(',', array_unique(array_filter(array_map(fn ($n) => Telepon::normalisasi(trim($n)), $daftar))))]);
+        }
+
         $data = $request->validate([
             'penyedia' => 'required|string|max:100',
             'model' => 'required|string|max:100',
@@ -65,6 +73,13 @@ class PengaturanAIController extends Controller
             'jam_mulai' => 'required|date_format:H:i',
             'jam_selesai' => 'required|date_format:H:i',
             'variasi_kalimat' => 'required|boolean',
+            'nomor_uji' => ['nullable', 'string', 'max:1000', function ($atribut, $nilai, $gagal) {
+                foreach (array_filter(explode(',', (string) $nilai)) as $n) {
+                    if (!preg_match('/^62\d{8,13}$/', $n)) {
+                        $gagal("Nomor uji \"{$n}\" tidak valid. Contoh: 081234567890.");
+                    }
+                }
+            }],
         ], [
             'ambang_keyakinan.gt' => 'Ambang keyakinan harus lebih dari 0 dan paling besar 1.',
             'ambang_keyakinan.max' => 'Ambang keyakinan harus lebih dari 0 dan paling besar 1.',
