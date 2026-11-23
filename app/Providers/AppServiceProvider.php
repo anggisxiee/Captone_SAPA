@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Services\Ai\AiClient;
+use App\Services\Ai\AiFactory;
 use App\Services\WhatsApp\BaileysWhatsAppGateway;
 use App\Services\WhatsApp\FakeWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppGateway;
@@ -16,6 +18,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Tidak singleton: pengaturan AI dapat diubah Administrator kapan saja.
+        $this->app->bind(AiClient::class, fn () => AiFactory::buat());
+
         $this->app->singleton(WhatsAppGateway::class, function () {
             return match (config('whatsapp.driver')) {
                 'fake' => new FakeWhatsAppGateway(),

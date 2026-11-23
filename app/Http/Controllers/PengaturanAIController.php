@@ -13,8 +13,8 @@ class PengaturanAIController extends Controller
             ['id' => 1],
             [
                 'penyedia' => 'OpenAI-compatible',
-                'model' => 'gpt-4o-mini',
-                'base_url' => 'https://api.openai.com/v1',
+                'model' => config('ai.model'),
+                'base_url' => config('ai.base_url'),
                 'instruksi_persona' => 'Ramah dan solutif sebagai Kakak Konselor Bimbel Asentra. Sapa orang tua dengan Ayah/Bunda. Jangan menjanjikan kelulusan atau nilai.',
                 'ambang_keyakinan' => 0.62,
                 'eskalasi_pelanggan_marah' => true,

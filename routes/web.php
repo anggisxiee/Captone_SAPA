@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Middleware\DemoAuth;
 use App\Http\Middleware\RoleAccess;
 
+use App\Http\Controllers\ArtikelPengetahuanController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TimAksesController;
 use App\Http\Controllers\NomorWhatsappController;
@@ -69,8 +70,10 @@ Route::middleware(DemoAuth::class)->group(function () {
 
     Route::view('/kontak', 'kontak')->name('kontak');
 
-    Route::view('/basis-pengetahuan', 'basis-pengetahuan')
-        ->name('basis-pengetahuan');
+    Route::get('/basis-pengetahuan', [
+        ArtikelPengetahuanController::class,
+        'index'
+    ])->name('basis-pengetahuan');
 
     /*
     | Kotak Masuk WhatsApp
@@ -105,6 +108,25 @@ Route::middleware(DemoAuth::class)->group(function () {
     Route::middleware(
         RoleAccess::class . ':Supervisor,Administrator'
     )->group(function () {
+
+        /*
+        | Basis Pengetahuan (mengelola artikel, F12)
+        */
+
+        Route::post('/basis-pengetahuan', [
+            ArtikelPengetahuanController::class,
+            'store'
+        ])->name('basis-pengetahuan.store');
+
+        Route::post('/basis-pengetahuan/uji', [
+            ArtikelPengetahuanController::class,
+            'uji'
+        ])->name('basis-pengetahuan.uji');
+
+        Route::put('/basis-pengetahuan/{artikel}', [
+            ArtikelPengetahuanController::class,
+            'update'
+        ])->name('basis-pengetahuan.update');
 
         /*
         | Nomor WhatsApp

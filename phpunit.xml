@@ -32,6 +32,9 @@
         <env name="WHATSAPP_DRIVER" value="fake"/>
         <env name="WHATSAPP_WEBHOOK_TOKEN" value=""/>
         <env name="WHATSAPP_GATEWAY_URL" value="http://127.0.0.1:1"/>
+        <!-- Tes tidak boleh memanggil penyedia AI sungguhan, apa pun isi .env. -->
+        <env name="AI_DRIVER" value="fake"/>
+        <env name="AI_API_KEY" value=""/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>

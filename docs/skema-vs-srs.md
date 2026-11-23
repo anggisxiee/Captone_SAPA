@@ -41,6 +41,8 @@ Kode memerlukan ini dan SRS belum menyebutnya:
 - `antrean_pesan`: `pengirim` (label nomor), `maks_percobaan`. `keputusan` bernilai `Kirim`, `Ditunda`, `Ditahan`,
   `Terkirim`, `Gagal` (SRS hanya menyebut tiga yang pertama; dua terakhir adalah hasil pengiriman).
 - `log_audit`: `alamat_ip`.
+- `artikel_pengetahuan_fts`: tabel virtual FTS5 (external content) beserta tiga pemicu yang menjaga indeks pencarian
+  tetap sinkron (BR12). Dibuat oleh migrasi `2026_11_24_100000_*`; khusus SQLite.
 
 Nilai yang dipakai kode untuk kolom "status data":
 

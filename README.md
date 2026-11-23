@@ -93,6 +93,35 @@ curl -X POST http://127.0.0.1:8000/api/webhook/whatsapp/pesan \
 Respons: `201` tersimpan, `200` duplikat (`id_pesan` sama), `401` token salah,
 `404` nomor tidak dikenal, `409` nomor tidak tersambung atau nonaktif.
 
+## AI (SumoPod / kompatibel OpenAI)
+
+SAPA memakai penyedia AI lewat antarmuka `App\Services\Ai\AiClient`. Driver diatur dengan `AI_DRIVER`:
+
+| Driver | Keterangan |
+|---|---|
+| `fake` (bawaan) | Simulasi tanpa penyedia. Dipakai tes dan pengembangan tanpa kunci. |
+| `openai` | Penyedia kompatibel OpenAI (`POST {AI_BASE_URL}/chat/completions`). Bawaan: SumoPod `https://ai.sumopod.com/v1`, model `gpt-4o-mini`. |
+
+```bash
+# di .env
+AI_DRIVER=openai
+AI_API_KEY=sk-...            # buat di dashboard SumoPod, beri batas anggaran
+
+php artisan ai:uji           # uji koneksi + kunci + tampilkan saldo (kunci disamarkan)
+php artisan ai:uji "Halo"    # sekalian kirim satu pesan uji
+```
+
+Kunci yang disimpan di halaman **Pengaturan AI** (terenkripsi di basis data) mengalahkan `.env` **secara utuh**
+(alamat dan model ikut dari halaman itu), supaya kunci satu penyedia tidak pernah terkirim ke alamat penyedia lain.
+Bila penyedia gagal atau melewati batas waktu, pemanggil beralih ke mode aturan bawaan.
+
+### Basis pengetahuan (FTS5)
+
+Artikel dikelola di halaman **Basis Pengetahuan** (Supervisor dan Administrator; semua pengguna dapat melihat).
+Pencarian memakai SQLite FTS5 dengan peringkat `bm25`; indeks dijaga sinkron oleh pemicu basis data. Skor 0 sampai 1
+pada "Uji pencarian" = 0,6 x cakupan istilah + 0,4 x bm25 relatif; artikel di bawah `AI_AMBANG_RELEVANSI` tidak dipakai AI.
+Tidak ada stemming bahasa Indonesia: gunakan kolom **label** untuk sinonim ("daftar" tidak menemukan "pendaftaran").
+
 ## Hak akses
 
 | Role | Akses |
@@ -119,6 +148,8 @@ cd wa-gateway && npm test   # gateway Node (tanpa perlu Baileys terpasang)
 | `KirimPesanKeluarTest` | Pengiriman, percobaan ulang, pusat risiko |
 | `NomorWhatsappSesiTest` | Penautan QR, kedaluwarsa, putus (TC11) |
 | `BaileysGatewayTest` | Driver `baileys` (gateway dipalsukan), event QR, gateway mati |
+| `AiClientTest` | Klien AI kompatibel OpenAI (penyedia dipalsukan), konfigurasi, perintah `ai:uji` |
+| `ArtikelPengetahuanTest` | Basis pengetahuan: hak akses, CRUD, pengindeksan FTS5, skor dan ambang |
 | `HalamanTest` | Semua halaman terbuka sesuai role |
 | `SkemaSrsTest` | Tiap tabel dan kolom kamus data SRS ada, plus perilaku turunannya (PB-04) |
 | `MigrasiSkemaSrsTest` | Peningkatan dari skema lama dengan data nyata tidak menghilangkan data |
