@@ -7,6 +7,8 @@ use App\Models\LogAudit;
 use App\Models\PesanWhatsapp;
 use App\Models\Prospek;
 use App\Models\User;
+use App\Services\Prospek\SkorPrioritas;
+use App\Support\AksesNomor;
 use App\Support\Telepon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -17,8 +19,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /** Halaman Kontak (F03, F09): daftar calon siswa dan wali murid beserta form ubah data. */
 class KontakController extends Controller
 {
-    private const HAK_MEMBALAS = ['Balas chat', 'Kelola'];
-
     public function index(Request $request)
     {
         $kontak = $this->kueri($request)
@@ -66,13 +66,10 @@ class KontakController extends Controller
 
         $kontak->update($data);
 
-        // Salinan lama pada prospek dijaga seragam dengan kontak.
-        Prospek::where('kontak_id', $kontak->id)->update(array_filter([
-            'nama' => $kontak->nama_tampil,
-            'nomor_telepon' => $kontak->nomor_telepon,
-            'jenjang' => $kontak->jenjang,
-            'sumber' => $kontak->sumber,
-        ], fn ($v) => $v !== null));
+        // BR06: kelengkapan data berubah, jadi skor prospek dihitung ulang.
+        foreach (Prospek::where('kontak_id', $kontak->id)->get() as $prospek) {
+            app(SkorPrioritas::class)->simpan($prospek);
+        }
 
         $berubah = array_values(array_diff(array_keys($kontak->getChanges()), ['updated_at']));
         if ($berubah) {
@@ -166,27 +163,14 @@ class KontakController extends Controller
         return $kueri;
     }
 
-    /** null = semua nomor (Administrator/Supervisor); selain itu daftar id nomor yang boleh dilihat. */
     private function dapatDilihat(User $pengguna): ?array
     {
-        if (in_array($pengguna->role, ['Administrator', 'Supervisor'], true)) {
-            return null;
-        }
-
-        return $pengguna->nomorWhatsapp()
-            ->wherePivotIn('hak_akses', ['Lihat saja', ...self::HAK_MEMBALAS])
-            ->pluck('nomor_whatsapp.id')->map(fn ($id) => (int) $id)->all();
+        return AksesNomor::dapatDilihat($pengguna);
     }
 
-    /** @return array<int, int>|null nomor yang boleh diubah datanya; null = semua. */
     private function dapatDikelola(User $pengguna): ?array
     {
-        if (in_array($pengguna->role, ['Administrator', 'Supervisor'], true)) {
-            return null;
-        }
-
-        return $pengguna->nomorWhatsapp()->wherePivotIn('hak_akses', self::HAK_MEMBALAS)
-            ->pluck('nomor_whatsapp.id')->map(fn ($id) => (int) $id)->all();
+        return AksesNomor::dapatDikelola($pengguna);
     }
 
     private function bolehMengubah(User $pengguna, Kontak $kontak): bool

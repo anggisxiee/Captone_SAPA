@@ -76,7 +76,7 @@ class KontakTest extends TestCase
     public function test_mengubah_kontak_menyeragamkan_nomor_menyelaraskan_prospek_dan_dicatat(): void
     {
         $k = $this->kontak('6285711110001', ['nama' => 'Bu Ratna']);
-        $p = Prospek::create(['kontak_id' => $k->id, 'nama' => 'Bu Ratna', 'nomor_telepon' => '6285711110001', 'tahap' => 'baru']);
+        $p = Prospek::create(['kontak_id' => $k->id, 'tahap' => 'baru', 'skor' => 0]);
 
         $this->actingAs($this->user())->put("/kontak/{$k->id}", [
             'nama' => ' Ratna Dewi ', 'nomor_telepon' => '0857-1111-9999', 'jenjang' => 'SMP', 'kelas' => '8', 'mapel' => '', 'kota' => 'Sragen', 'sumber' => 'Rekomendasi',
@@ -85,7 +85,7 @@ class KontakTest extends TestCase
 
         $k->refresh();
         $this->assertSame(['Ratna Dewi', '6285711119999', 'SMP', null, 'Sragen'], [$k->nama, $k->nomor_telepon, $k->jenjang, $k->mapel, $k->kota]);
-        $this->assertSame(['Ratna Dewi', '6285711119999', 'SMP', 'Rekomendasi'], [$p->fresh()->nama, $p->fresh()->nomor_telepon, $p->fresh()->jenjang, $p->fresh()->sumber]);
+        $this->assertGreaterThan(0, $p->fresh()->skor); // BR06: skor dihitung ulang saat data kontak berubah
         $this->assertDatabaseHas('log_audit', ['aksi' => 'Ubah kontak']);
     }
 
@@ -137,15 +137,15 @@ class KontakTest extends TestCase
         $lain = $this->kontak('6285711110002', ['nama' => 'Pak Anwar'], $nomor);
         $p = Percakapan::where('kontak_id', $k->id)->first();
         \App\Models\PesanWhatsapp::create(['percakapan_id' => $p->id, 'arah' => 'masuk', 'jenis_pengirim' => 'pelanggan', 'isi' => 'Halo', 'status' => 'diterima']);
-        Prospek::create(['kontak_id' => $k->id, 'nama' => 'Bu Ratna', 'nomor_telepon' => '6285711110001', 'tahap' => 'baru']);
-        Prospek::create(['kontak_id' => $lain->id, 'nama' => 'Pak Anwar', 'nomor_telepon' => '6285711110002', 'tahap' => 'baru']);
+        Prospek::create(['kontak_id' => $k->id, 'tahap' => 'baru']);
+        Prospek::create(['kontak_id' => $lain->id, 'tahap' => 'baru']);
 
         $this->actingAs($this->user())->delete("/kontak/{$k->id}")->assertRedirect('/kontak');
 
         $this->assertDatabaseMissing('kontak', ['id' => $k->id]);
         $this->assertSame(0, Percakapan::where('kontak_id', $k->id)->count());
         $this->assertSame(0, \App\Models\PesanWhatsapp::count());
-        $this->assertSame(['6285711110002'], Prospek::pluck('nomor_telepon')->all());
+        $this->assertSame([$lain->id], Prospek::pluck('kontak_id')->all());
         $this->assertSame(1, Kontak::count());
         $this->assertDatabaseHas('log_audit', ['aksi' => 'Hapus kontak']);
     }

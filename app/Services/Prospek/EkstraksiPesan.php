@@ -18,6 +18,9 @@ class EkstraksiPesan
         'tanya_program' => ['program', 'kelas', 'les', 'bimbel', 'bimbingan', 'intensif', 'utbk', 'snbt', 'brosur'],
     ];
 
+    /** Kata yang menandakan kebutuhan mendesak (dipakai skor prioritas). */
+    private const URGENSI = ['ujian', 'utbk', 'snbt', 'sbmptn', 'tryout', 'try out', 'asesmen', 'uas', 'uts', 'segera', 'secepatnya', 'secepat mungkin', 'besok', 'lusa', 'minggu depan', 'bulan depan', 'hari ini', 'mendesak', 'deadline'];
+
     /** Nama baku => pola (huruf kecil, kata utuh). */
     private const MAPEL = [
         'Matematika' => 'matematika|mtk|math',
@@ -54,6 +57,21 @@ class EkstraksiPesan
             'kelas' => $kelas,
             'mapel' => $this->mapel($teks),
         ];
+    }
+
+    /**
+     * Kata urgensi berbeda yang muncul pada pesan.
+     *
+     * @return array<int, string>
+     */
+    public function urgensi(string $pesan): array
+    {
+        $teks = mb_strtolower($pesan);
+
+        return array_values(array_filter(
+            self::URGENSI,
+            fn ($k) => (bool) preg_match('/(?<![\p{L}\p{N}])' . preg_quote($k, '/') . '(?![\p{L}\p{N}])/u', $teks)
+        ));
     }
 
     private function maksud(string $teks): string

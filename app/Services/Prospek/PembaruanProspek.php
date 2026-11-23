@@ -15,8 +15,10 @@ use App\Models\Prospek;
  */
 class PembaruanProspek
 {
-    public function __construct(private readonly EkstraksiPesan $ekstraksi)
-    {
+    public function __construct(
+        private readonly EkstraksiPesan $ekstraksi,
+        private readonly SkorPrioritas $skor,
+    ) {
     }
 
     public function terapkan(Kontak $kontak, PesanWhatsapp $pesan): void
@@ -43,25 +45,15 @@ class PembaruanProspek
         $prospek = Prospek::where('kontak_id', $kontak->id)->first();
 
         if (!$prospek) {
-            $prospek = Prospek::create([
-                'kontak_id' => $kontak->id,
-                'nama' => $kontak->nama_tampil,
-                'nomor_telepon' => $kontak->nomor_telepon,
-                'jenjang' => $kontak->jenjang,
-                'sumber' => $kontak->sumber,
-                'tahap' => 'baru',
-                'skor' => 0,
-            ]);
+            $prospek = Prospek::create(['kontak_id' => $kontak->id, 'tahap' => 'baru', 'skor' => 0]);
 
             LogAudit::catat('Buat prospek otomatis', "Prospek baru dari pesan WhatsApp {$kontak->nomor_telepon}", 'prospek', null, $prospek->id);
-        } else {
-            $prospek->update(array_filter([
-                'nama' => $prospek->nama === $prospek->nomor_telepon ? ($isi['nama'] ?? null) : null,
-                'jenjang' => $prospek->jenjang ? null : $kontak->jenjang,
-            ]));
         }
 
         // Jejak ekstraksi pada pesan pelanggan agar dapat diperiksa.
         $pesan->update(['meta_ai' => ['ekstraksi' => $hasil]]);
+
+        // BR06: skor dihitung ulang setiap ada pesan atau perubahan data kontak.
+        $this->skor->simpan($prospek);
     }
 }

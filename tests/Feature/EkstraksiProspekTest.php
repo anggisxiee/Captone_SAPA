@@ -105,7 +105,9 @@ class EkstraksiProspekTest extends TestCase
 
         $prospek = Prospek::sole();
         $this->assertSame($kontak->id, $prospek->kontak_id);
-        $this->assertSame(['baru', 'SMP', 'WhatsApp', 0], [$prospek->tahap, $prospek->jenjang, $prospek->sumber, $prospek->skor]);
+        $this->assertSame('baru', $prospek->tahap);
+        $this->assertGreaterThan(0, $prospek->skor); // skor dihitung saat prospek dibuat
+        $this->assertCount(5, $prospek->rincian_skor);
         $this->assertDatabaseHas('log_audit', ['aksi' => 'Buat prospek otomatis']);
     }
 
@@ -118,7 +120,6 @@ class EkstraksiProspekTest extends TestCase
         $kontak = Kontak::sole();
         $this->assertSame(['SMP', '8', 'Fisika'], [$kontak->jenjang, $kontak->kelas, $kontak->mapel]);
         $this->assertSame(1, Prospek::count());
-        $this->assertSame('SMP', Prospek::sole()->jenjang);
     }
 
     public function test_pesan_duplikat_tidak_memproses_ulang(): void
@@ -135,7 +136,7 @@ class EkstraksiProspekTest extends TestCase
         $this->kirim('Halo, nama anak saya Budi');
 
         $this->assertSame('Budi', Kontak::sole()->nama);
-        $this->assertSame('Budi', Prospek::sole()->nama);
+        $this->assertSame('Budi', Prospek::sole()->kontak->nama);
     }
 
     public function test_kontak_lama_tanpa_prospek_dibuatkan_prospek(): void

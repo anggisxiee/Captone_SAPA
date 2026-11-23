@@ -24,8 +24,8 @@ Jalankan: `php artisan test --filter=Srs`.
 | `riwayat_antrean` | Sesuai | |
 | `insiden_risiko` | Sesuai + tambahan | `tingkat_risiko` juga mengenal `Kritis` |
 | `log_audit` | Sesuai + tambahan | `objek` menjadi `entitas` (nama tabel); ditambah `entitas_id`; `keterangan` masuk ke `detail` (JSON) |
-| `prospek` | **Sebagian (sengaja)** | Ditambah `kontak_id`, `rincian_skor`, `tindak_lanjut_berikut`. Kolom lama `nama`, `nomor_telepon`, `jenjang`, `sumber`, `catatan` masih ada karena halaman Prospek membacanya; dibuang saat CRM ditulis ulang di Sprint 2 |
-| `aktivitas_prospek` | Sesuai (tabel baru) | Belum dipakai UI (Sprint 2). `user_id` boleh kosong agar riwayat tetap ada bila pengguna dihapus |
+| `prospek` | Sesuai | Kolom lama `nama`, `nomor_telepon`, `jenjang`, `sumber`, `catatan` dibuang pada PB-10 (migrasi `2026_11_26_*`); identitas ada di `kontak`, catatan lama dipindah ke `aktivitas_prospek` |
+| `aktivitas_prospek` | Sesuai (tabel baru) | Dipakai halaman Prospek (tindak lanjut, BR05). `user_id` boleh kosong agar riwayat tetap ada bila pengguna dihapus |
 | `artikel_pengetahuan` | Sesuai (tabel baru) | Belum dipakai UI. Indeks pencarian FTS5 dibuat di Sprint 2 |
 | `metrik_harian` | Sesuai (tabel baru) | Diisi pada Sprint 3 (dasbor). Unik per nomor dan tanggal |
 

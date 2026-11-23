@@ -147,7 +147,16 @@ Setiap pesan pelanggan baru (`PesanMasuk::simpan`) memicu `PembaruanProspek`:
 - hanya kolom yang masih **kosong** yang diisi, sehingga ubahan manual agen tidak tertimpa; nilai yang tidak yakin dibiarkan kosong, bukan ditebak;
 - hasil ekstraksi disimpan pada `meta_ai.ekstraksi` pesan pelanggan, dan pembuatan prospek dicatat di Log Audit.
 
-Skor prioritas masih 0 sampai PB-10 (CRM).
+### CRM dan skor prioritas (F08, BR05, BR06)
+
+Halaman Prospek menampilkan papan per tahap (diurutkan menurut skor), rincian skor, riwayat aktivitas, dan form tindak lanjut.
+
+- **Skor 0..100** dari lima komponen berbobot (`config/prospek.php`, bobot awal 25/25/20/15/15): kelengkapan data, urgensi (penanda seperti "ujian", "segera"), minat program (pendaftaran > biaya > jadwal > program > fasilitas), responsivitas chat (jumlah pesan + balasan atas pesan kita dalam 24 jam), dan riwayat (tahap + aktivitas). Aturannya deterministik, bukan AI, dan setiap komponen menyimpan nilai, poin, serta alasannya di `prospek.rincian_skor`.
+- Skor dihitung ulang saat ada pesan pelanggan, data kontak diubah, tahap berubah, atau aktivitas dicatat. Setelah mengubah bobot jalankan `php artisan prospek:hitung-ulang`.
+- **BR05:** setiap tindak lanjut wajib bercatatan; perpindahan tahap tercatat sebagai aktivitas dan di Log Audit. Penanggung jawab diisi pengguna yang pertama menindaklanjuti.
+- **BR03:** Agen/CS hanya melihat prospek pada nomor yang ditugaskan dan hanya yang berhak "Balas chat"/"Kelola" yang boleh mengubah.
+- Kolom identitas lama di `prospek` (nama, nomor, jenjang, sumber, catatan) sudah dibuang; datanya kini di `kontak`, catatan lama dipindah menjadi aktivitas.
+- Belum: hitungan konversi harian saat prospek masuk tahap "daftar" menunggu metrik harian (Sprint 3).
 
 ### Basis pengetahuan (FTS5)
 

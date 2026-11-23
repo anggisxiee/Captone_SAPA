@@ -69,6 +69,12 @@ Route::middleware(DemoAuth::class)->group(function () {
         'store'
     ])->name('prospek.store');
 
+    // Pindah tahap, catatan aktivitas, dan jadwal tindak lanjut
+    Route::patch('/prospek/{prospek}/tindak-lanjut', [
+        ProspekController::class,
+        'tindakLanjut'
+    ])->name('prospek.tindak-lanjut');
+
     Route::get('/kontak', [KontakController::class, 'index'])->name('kontak');
     Route::get('/kontak/ekspor', [KontakController::class, 'ekspor'])->name('kontak.ekspor');
     Route::put('/kontak/{kontak}', [KontakController::class, 'update'])->name('kontak.update');
