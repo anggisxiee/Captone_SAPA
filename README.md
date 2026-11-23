@@ -115,6 +115,29 @@ Kunci yang disimpan di halaman **Pengaturan AI** (terenkripsi di basis data) men
 (alamat dan model ikut dari halaman itu), supaya kunci satu penyedia tidak pernah terkirim ke alamat penyedia lain.
 Bila penyedia gagal atau melewati batas waktu, pemanggil beralih ke mode aturan bawaan.
 
+### Mesin jawaban dan eskalasi
+
+`App\Services\Ai\MesinJawaban` memutuskan satu pesan pelanggan, dari langkah yang paling murah ke paling mahal:
+
+1. kata kunci eskalasi (aturan, gratis) -> eskalasi
+2. nada marah (aturan, gratis) -> eskalasi
+3. artikel relevan dengan FTS5 (gratis); tanpa artikel -> eskalasi (BR07), **AI tidak dipanggil**
+4. jawaban dari artikel oleh penyedia AI, disertai sumber; bila penyedia gagal atau melewati batas waktu -> **mode aturan bawaan** (artikel dikutip apa adanya)
+5. keyakinan di bawah ambang (Pengaturan AI) -> eskalasi
+
+Keyakinan = 0,5 x skor relevansi artikel + 0,5 x nilai yang dinilai model sendiri (rumus awal, dikalibrasi dengan 50 pertanyaan uji).
+Pesan pelanggan hanya masuk sebagai peran `user`, tidak pernah ke instruksi sistem, dan kode sumber karangan model dibuang.
+
+```bash
+php artisan ai:jawab "berapa biaya bimbel SMP kelas 8?"   # jalankan mesin pada satu pesan, tanpa mengirim apa pun
+```
+
+Halaman **Pengaturan AI** memuat konsol "Uji Keputusan" yang memakai mesin yang sama. Kunci baru diuji ke penyedia sebelum
+disimpan (ditolak bila penyedia menolak), nilai kunci tidak pernah dicatat di log audit, mengganti alamat penyedia
+mewajibkan memasukkan ulang kunci, dan alamat internal atau `http` polos ditolak di luar pengembangan.
+
+Belum otomatis: mesin ini belum dipasang pada alur pesan masuk WhatsApp (tahap berikutnya).
+
 ### Basis pengetahuan (FTS5)
 
 Artikel dikelola di halaman **Basis Pengetahuan** (Supervisor dan Administrator; semua pengguna dapat melihat).
@@ -150,6 +173,8 @@ cd wa-gateway && npm test   # gateway Node (tanpa perlu Baileys terpasang)
 | `BaileysGatewayTest` | Driver `baileys` (gateway dipalsukan), event QR, gateway mati |
 | `AiClientTest` | Klien AI kompatibel OpenAI (penyedia dipalsukan), konfigurasi, perintah `ai:uji` |
 | `ArtikelPengetahuanTest` | Basis pengetahuan: hak akses, CRUD, pengindeksan FTS5, skor dan ambang |
+| `MesinJawabanTest` | Mesin jawaban: eskalasi, jawaban AI dengan sumber, mode aturan bawaan, nada marah |
+| `PengaturanAiTest` | Pengaturan AI: uji kunci, keamanan alamat dan log, batas BR13, konsol Uji Keputusan |
 | `HalamanTest` | Semua halaman terbuka sesuai role |
 | `SkemaSrsTest` | Tiap tabel dan kolom kamus data SRS ada, plus perilaku turunannya (PB-04) |
 | `MigrasiSkemaSrsTest` | Peningkatan dari skema lama dengan data nyata tidak menghilangkan data |
