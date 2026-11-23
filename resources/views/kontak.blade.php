@@ -1,202 +1,205 @@
-
 @extends('layouts.app')
 @section('title', 'Kontak')
-@section('subtitle', '142 calon siswa dan wali murid')
+@section('subtitle', $total . ' calon siswa dan wali murid')
 
 @section('actions')
-    <select class="field w-auto !text-[10px] !py-1.5">
-        <option>Semua nomor</option>
-    </select>
-    <button class="btn btn-outline !text-[10px] !py-1.5">
+    <a href="{{ route('kontak.ekspor', request()->only('q', 'jenjang', 'sumber')) }}"
+       class="btn btn-outline !text-[10px] !py-1.5">
         Ekspor CSV
-    </button>
+    </a>
 @endsection
 
 @section('content')
 @php
-    $kontak = [
-        ['nama'=>'Rina Kusuma','nomor'=>'0812-3456-7890','jenjang'=>'SMP','kelas'=>'Kelas 8','mapel'=>'Matematika','cabang'=>'Bandung (Dago)','sumber'=>'Iklan Instagram','tahap'=>'Tertarik','terakhir'=>'Hari ini 10:14'],
-        ['nama'=>'Hendra Setiawan','nomor'=>'0812-1111-2222','jenjang'=>'SMA','kelas'=>'Kelas 12','mapel'=>'UTBK SNBT','cabang'=>'Sragen','sumber'=>'Iklan Instagram','tahap'=>'Baru','terakhir'=>'Hari ini 09:45'],
-        ['nama'=>'Sinta Nurhaliza','nomor'=>'0812-4444-5555','jenjang'=>'SMP','kelas'=>'Kelas 9','mapel'=>'Ujian sekolah','cabang'=>'Sragen','sumber'=>'Rekomendasi','tahap'=>'Dihubungi','terakhir'=>'Hari ini 09:12'],
-        ['nama'=>'Dimas Aditya','nomor'=>'0857-6666-7777','jenjang'=>'SMA','kelas'=>'Kelas 11','mapel'=>'Fisika & Kimia','cabang'=>'Sragen','sumber'=>'Situs web','tahap'=>'Dihubungi','terakhir'=>'Kemarin'],
-        ['nama'=>'Kevin Sanjaya','nomor'=>'0813-2222-3333','jenjang'=>'SD','kelas'=>'Kelas 6','mapel'=>'Persiapan asesmen','cabang'=>'Sragen','sumber'=>'Rekomendasi','tahap'=>'Baru','terakhir'=>'Kemarin'],
-        ['nama'=>'Nadya Amalia','nomor'=>'0852-1212-3434','jenjang'=>'Alumni','kelas'=>'-','mapel'=>'Kelas persiapan','cabang'=>'Sragen','sumber'=>'Situs web','tahap'=>'Penawaran','terakhir'=>'22 Okt'],
-    ];
+    $bolehUbah = fn ($k) => $dikelola === null
+        || $k->percakapan->contains(fn ($p) => in_array((int) $p->nomor_whatsapp_id, $dikelola, true));
+
+    // Form dibuka kembali dengan isian terakhir bila validasi gagal.
+    $kontakGagal = old('_kontak_id') ? [
+        'id' => (int) old('_kontak_id'),
+        'nama' => old('nama'), 'nomor_telepon' => old('nomor_telepon'), 'jenjang' => old('jenjang'),
+        'kelas' => old('kelas'), 'mapel' => old('mapel'), 'kota' => old('kota'), 'sumber' => old('sumber'),
+    ] : null;
 @endphp
 
-<div x-data="{ open: false, c: {} }">
-
-    {{-- Pencarian --}}
-    <div class="flex items-center gap-2 mb-3">
-        <input
-            class="field max-w-xs !text-[10px] !py-1.5"
-            placeholder="Cari nama atau nomor"
-        >
+@if ($errors->any())
+    <div class="mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
+        @foreach ($errors->all() as $error)
+            <div>{{ $error }}</div>
+        @endforeach
     </div>
+@endif
+
+<div x-data="{ open: @js($kontakGagal !== null), c: @js($kontakGagal ?? new stdClass) }">
+
+    {{-- Pencarian dan filter --}}
+    <form method="GET" action="{{ route('kontak') }}" class="flex items-center gap-2 mb-3">
+        <input name="q" value="{{ $q }}" class="field max-w-xs !text-[10px] !py-1.5" placeholder="Cari nama atau nomor">
+
+        <select name="jenjang" class="field w-auto !text-[10px] !py-1.5" onchange="this.form.submit()">
+            <option value="">Semua jenjang</option>
+            @foreach ($daftarJenjang as $j)
+                <option value="{{ $j }}" @selected($jenjang === $j)>{{ $j }}</option>
+            @endforeach
+        </select>
+
+        <select name="sumber" class="field w-auto !text-[10px] !py-1.5" onchange="this.form.submit()">
+            <option value="">Semua sumber</option>
+            @foreach ($daftarSumber as $s)
+                <option value="{{ $s }}" @selected($sumber === $s)>{{ $s }}</option>
+            @endforeach
+        </select>
+
+        <button class="btn btn-outline !text-[10px] !py-1.5">Cari</button>
+
+        @if ($q !== '' || $jenjang !== '' || $sumber !== '')
+            <a href="{{ route('kontak') }}" class="text-[10px] text-slate-500 underline">Atur ulang</a>
+        @endif
+    </form>
 
     {{-- Tabel kontak --}}
     <div class="card !p-0 overflow-hidden">
         <table class="w-full table-fixed border-collapse">
             <colgroup>
+                <col style="width: 16%">
                 <col style="width: 15%">
-                <col style="width: 14%">
-                <col style="width: 11%">
-                <col style="width: 13%">
-                <col style="width: 13%">
+                <col style="width: 12%">
+                <col style="width: 16%">
+                <col style="width: 12%">
                 <col style="width: 9%">
-                <col style="width: 15%">
-                <col style="width: 10%">
+                <col style="width: 12%">
+                <col style="width: 8%">
             </colgroup>
 
             <thead class="bg-slate-50">
                 <tr>
                     @foreach (['Nama','Nomor WhatsApp','Jenjang','Mata pelajaran','Sumber','Tahap','Terakhir dihubungi','Aksi'] as $h)
-                        <th class="th !text-[9px] !px-1.5 !py-2 text-left">
-                            {{ $h }}
-                        </th>
+                        <th class="th !text-[9px] !px-1.5 !py-2 text-left">{{ $h }}</th>
                     @endforeach
                 </tr>
             </thead>
 
             <tbody>
-                @foreach ($kontak as $k)
+                @forelse ($kontak as $k)
+                    @php $terakhir = $k->percakapan->max('pesan_terakhir_pada'); @endphp
                     <tr>
-                        <td class="td !text-[10px] !px-1.5 !py-2 font-medium break-words">
-                            {{ $k['nama'] }}
-                        </td>
-
-                        <td class="td !text-[9px] !px-1.5 !py-2 break-all">
-                            {{ $k['nomor'] }}
-                        </td>
-
-                        <td class="td !text-[9px] !px-1.5 !py-2">
-                            {{ $k['jenjang'] }} {{ $k['kelas'] }}
-                        </td>
-
-                        <td class="td !text-[9px] !px-1.5 !py-2 break-words">
-                            {{ $k['mapel'] }}
-                        </td>
-
-                        <td class="td !text-[9px] !px-1.5 !py-2 break-words">
-                            {{ $k['sumber'] }}
-                        </td>
-
+                        <td class="td !text-[10px] !px-1.5 !py-2 font-medium break-words">{{ $k->nama_tampil }}</td>
+                        <td class="td !text-[9px] !px-1.5 !py-2 break-all">{{ $k->nomor_telepon }}</td>
+                        <td class="td !text-[9px] !px-1.5 !py-2">{{ trim(($k->jenjang ?? '') . ' ' . ($k->kelas ? 'Kelas ' . $k->kelas : '')) ?: '-' }}</td>
+                        <td class="td !text-[9px] !px-1.5 !py-2 break-words">{{ $k->mapel ?: '-' }}</td>
+                        <td class="td !text-[9px] !px-1.5 !py-2 break-words">{{ $k->sumber ?: '-' }}</td>
                         <td class="td !px-1.5 !py-2">
-                            <span class="badge b-slate !text-[8px] !px-1.5 !py-0.5">
-                                {{ $k['tahap'] }}
-                            </span>
+                            <span class="badge b-slate !text-[8px] !px-1.5 !py-0.5">{{ $k->prospek ? ucfirst($k->prospek->tahap) : '-' }}</span>
                         </td>
-
-                        <td class="td !text-[9px] !px-1.5 !py-2 break-words">
-                            {{ $k['terakhir'] }}
-                        </td>
-
+                        <td class="td !text-[9px] !px-1.5 !py-2 break-words">{{ $terakhir ? \Illuminate\Support\Carbon::parse($terakhir)->diffForHumans() : '-' }}</td>
                         <td class="td !px-1.5 !py-2">
-                            <button
-                                @click='c = @json($k); open = true'
-                                class="btn btn-outline !text-[9px] !px-2 !py-1"
-                            >
-                                Ubah
-                            </button>
+                            @if ($bolehUbah($k))
+                                <button type="button"
+                                    @click="c = @js(['id' => $k->id, 'nama' => $k->nama, 'nomor_telepon' => $k->nomor_telepon, 'jenjang' => $k->jenjang, 'kelas' => $k->kelas, 'mapel' => $k->mapel, 'kota' => $k->kota, 'sumber' => $k->sumber]); open = true"
+                                    class="btn btn-outline !text-[9px] !px-2 !py-1">
+                                    Ubah
+                                </button>
+                            @endif
                         </td>
                     </tr>
-                @endforeach
+                @empty
+                    <tr>
+                        <td colspan="8" class="td !text-[11px] text-center text-slate-400 !py-6">
+                            {{ ($q !== '' || $jenjang !== '' || $sumber !== '') ? 'Tidak ada kontak yang cocok dengan pencarian.' : 'Belum ada kontak. Kontak muncul otomatis saat ada pesan masuk.' }}
+                        </td>
+                    </tr>
+                @endforelse
             </tbody>
         </table>
     </div>
 
-    <div class="text-[10px] text-slate-400 mt-2">
-        Menampilkan 1–6 dari 142 kontak
+    <div class="flex items-center justify-between mt-2 text-[10px] text-slate-400">
+        <span>
+            @if ($kontak->total() > 0)
+                Menampilkan {{ $kontak->firstItem() }}–{{ $kontak->lastItem() }} dari {{ $kontak->total() }} kontak
+            @endif
+        </span>
+        <span class="flex gap-2">
+            @if ($kontak->previousPageUrl())<a href="{{ $kontak->previousPageUrl() }}" class="underline">‹ Sebelumnya</a>@endif
+            @if ($kontak->nextPageUrl())<a href="{{ $kontak->nextPageUrl() }}" class="underline">Berikutnya ›</a>@endif
+        </span>
     </div>
 
     {{-- Modal ubah kontak --}}
-    <div
-        x-show="open"
-        x-cloak
-        class="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 p-4"
-        @keydown.escape.window="open=false"
-    >
-        <div
-            @click.outside="open=false"
-            class="bg-white rounded-xl p-4 w-full max-w-md space-y-3 shadow-xl"
-        >
+    <div x-show="open" x-cloak
+         class="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 p-4"
+         @keydown.escape.window="open=false">
+        <div @click.outside="open=false" class="bg-white rounded-xl p-4 w-full max-w-md space-y-3 shadow-xl">
             <div class="flex items-center justify-between">
                 <h3 class="text-sm font-semibold">Ubah kontak</h3>
-
-                <button
-                    @click="open=false"
-                    class="text-slate-400 text-sm"
-                >
-                    ✕
-                </button>
+                <button type="button" @click="open=false" class="text-slate-400 text-sm">✕</button>
             </div>
 
-            <div class="grid grid-cols-2 gap-2.5">
-                <div>
-                    <label class="label !text-[10px]">Nama lengkap</label>
-                    <input class="field !text-[11px] !py-1.5" x-model="c.nama">
+            <form method="POST" :action="'{{ url('/kontak') }}/' + c.id">
+                @csrf
+                @method('PUT')
+                <input type="hidden" name="_kontak_id" :value="c.id">
+                {{-- Filter aktif dibawa lewat nama berawalan f_ agar tidak bentrok dengan kolom kontak. --}}
+                @foreach (['q' => $q, 'jenjang' => $jenjang, 'sumber' => $sumber] as $nama => $nilai)
+                    <input type="hidden" name="f_{{ $nama }}" value="{{ $nilai }}">
+                @endforeach
+
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="label !text-[10px]">Nama lengkap</label>
+                        <input name="nama" class="field !text-[11px] !py-1.5" x-model="c.nama" maxlength="255">
+                    </div>
+
+                    <div>
+                        <label class="label !text-[10px]">Nomor WhatsApp</label>
+                        <input name="nomor_telepon" required class="field !text-[11px] !py-1.5" x-model="c.nomor_telepon">
+                        <p class="text-[9px] text-slate-400 mt-1">Nomor tidak boleh sama dengan kontak lain.</p>
+                    </div>
+
+                    <div>
+                        <label class="label !text-[10px]">Jenjang</label>
+                        <input name="jenjang" class="field !text-[11px] !py-1.5" x-model="c.jenjang" maxlength="100">
+                    </div>
+
+                    <div>
+                        <label class="label !text-[10px]">Kelas</label>
+                        <input name="kelas" class="field !text-[11px] !py-1.5" x-model="c.kelas" maxlength="50">
+                    </div>
+
+                    <div class="col-span-2">
+                        <label class="label !text-[10px]">Mata pelajaran peminatan</label>
+                        <input name="mapel" class="field !text-[11px] !py-1.5" x-model="c.mapel" maxlength="255">
+                    </div>
+
+                    <div>
+                        <label class="label !text-[10px]">Kota</label>
+                        <input name="kota" class="field !text-[11px] !py-1.5" x-model="c.kota" maxlength="100">
+                    </div>
+
+                    <div>
+                        <label class="label !text-[10px]">Sumber</label>
+                        <input name="sumber" class="field !text-[11px] !py-1.5" x-model="c.sumber" maxlength="100">
+                    </div>
                 </div>
 
-                <div>
-                    <label class="label !text-[10px]">Nomor WhatsApp</label>
-                    <input class="field !text-[11px] !py-1.5" x-model="c.nomor">
-                    <p class="text-[9px] text-slate-400 mt-1">
-                        Nomor tidak boleh sama dengan kontak lain.
-                    </p>
+                <p class="text-[9px] text-slate-400 mt-2">Tahap prospek diubah di halaman Prospek.</p>
+
+                <div class="flex justify-end gap-2 pt-3">
+                    <button type="button" @click="open=false" class="btn btn-outline !text-[10px] !py-1.5 !px-2.5">Batal</button>
+                    <button type="submit" class="btn btn-primary !text-[10px] !py-1.5 !px-2.5">Simpan</button>
                 </div>
+            </form>
 
-                <div>
-                    <label class="label !text-[10px]">Jenjang</label>
-                    <input class="field !text-[11px] !py-1.5" x-model="c.jenjang">
-                </div>
-
-                <div>
-                    <label class="label !text-[10px]">Kelas</label>
-                    <input class="field !text-[11px] !py-1.5" x-model="c.kelas">
-                </div>
-
-                <div class="col-span-2">
-                    <label class="label !text-[10px]">Mata pelajaran peminatan</label>
-                    <input class="field !text-[11px] !py-1.5" x-model="c.mapel">
-                </div>
-
-                <div>
-                    <label class="label !text-[10px]">Cabang</label>
-                    <input class="field !text-[11px] !py-1.5" x-model="c.cabang">
-                </div>
-
-                <div>
-                    <label class="label !text-[10px]">Sumber</label>
-                    <input class="field !text-[11px] !py-1.5" x-model="c.sumber">
-                </div>
-
-                <div class="col-span-2">
-                    <label class="label !text-[10px]">Tahap prospek</label>
-                    <input class="field !text-[11px] !py-1.5" x-model="c.tahap">
-                </div>
-            </div>
-
-            <div class="flex justify-between items-center pt-2">
-                <button class="btn btn-danger !text-[10px] !py-1.5 !px-2.5">
-                    Hapus kontak
-                </button>
-
-                <div class="flex gap-2">
-                    <button
-                        @click="open=false"
-                        class="btn btn-outline !text-[10px] !py-1.5 !px-2.5"
-                    >
-                        Batal
-                    </button>
-
-                    <button
-                        @click="open=false"
-                        class="btn btn-primary !text-[10px] !py-1.5 !px-2.5"
-                    >
-                        Simpan
-                    </button>
-                </div>
-            </div>
+            @if (auth()->user()->role === 'Administrator')
+                <form method="POST" :action="'{{ url('/kontak') }}/' + c.id"
+                      onsubmit="return confirm('Hapus kontak ini beserta semua percakapan, pesan, dan prospeknya? Tindakan ini tidak dapat dibatalkan.')"
+                      class="border-t border-slate-100 pt-3 flex items-center justify-between">
+                    @csrf
+                    @method('DELETE')
+                    <span class="text-[9px] text-slate-400">Menghapus juga percakapan, pesan, dan prospeknya.</span>
+                    <button type="submit" class="btn btn-danger !text-[10px] !py-1.5 !px-2.5">Hapus kontak</button>
+                </form>
+            @endif
         </div>
     </div>
 </div>

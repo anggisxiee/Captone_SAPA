@@ -16,6 +16,7 @@ use App\Http\Controllers\AntreanRisikoController;
 use App\Http\Controllers\InsidenRisikoController;
 use App\Http\Controllers\RiwayatAntreanController;
 use App\Http\Controllers\ProspekController;
+use App\Http\Controllers\KontakController;
 
 /*
 |--------------------------------------------------------------------------
@@ -68,7 +69,9 @@ Route::middleware(DemoAuth::class)->group(function () {
         'store'
     ])->name('prospek.store');
 
-    Route::view('/kontak', 'kontak')->name('kontak');
+    Route::get('/kontak', [KontakController::class, 'index'])->name('kontak');
+    Route::get('/kontak/ekspor', [KontakController::class, 'ekspor'])->name('kontak.ekspor');
+    Route::put('/kontak/{kontak}', [KontakController::class, 'update'])->name('kontak.update');
 
     Route::get('/basis-pengetahuan', [
         ArtikelPengetahuanController::class,
@@ -250,6 +253,8 @@ Route::middleware(DemoAuth::class)->group(function () {
         /*
         | Penautan sesi nomor WhatsApp (QR)
         */
+
+        Route::delete('/kontak/{kontak}', [KontakController::class, 'destroy'])->name('kontak.destroy');
 
         Route::post('/nomor-whatsapp/{nomorWhatsapp}/tautkan', [
             NomorWhatsappController::class,

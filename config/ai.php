@@ -27,7 +27,7 @@ return [
 
     // Pengaman sementara sebelum mesin anti-ban (Sprint 3): jumlah balasan otomatis AI per
     // percakapan per jam. Lewat batas ini AI berhenti dan percakapan diserahkan ke agen.
-    'maks_balasan_per_jam' => (int) env('AI_MAKS_BALASAN_PER_JAM', 6),
+    'maks_balasan_per_jam' => (int) env('AI_MAKS_BALASAN_PER_JAM', 20),
 
     // Artikel dengan skor relevansi di bawah ambang ini tidak dipakai AI (mockup halaman Basis Pengetahuan).
     'ambang_relevansi' => (float) env('AI_AMBANG_RELEVANSI', 0.70),

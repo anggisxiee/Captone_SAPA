@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\DB;
  * Keterbatasan yang sudah diukur:
  *  - Tidak ada stemming bahasa Indonesia ("daftar" tidak menemukan "pendaftaran").
  *    Kolom label pada artikel dipakai untuk menambah sinonim.
+ *  - Stemming hanya melepas akhiran "nya", "lah", dan "kah" ("biayanya" menemukan "biaya");
+ *    perkenalan "nama anak saya X" dibuang agar nama tidak dihitung sebagai istilah.
  *  - Pertanyaan yang menyentuh dua topik sekaligus membuat tiap artikel hanya menutup
  *    sebagian istilah, sehingga skornya rendah. Tahap jawaban AI perlu memilih artikel
  *    secara bertahap (istilah yang belum tertutup) sebelum memakai ambang.
@@ -30,7 +32,7 @@ class PencarianArtikel
         'aku', 'kami', 'kita', 'mau', 'ingin', 'tanya', 'nanya', 'kak', 'kakak', 'bu', 'ibu', 'pak', 'bapak',
         'admin', 'min', 'dong', 'ya', 'yah', 'nya', 'bisa', 'boleh', 'sudah', 'belum', 'akan', 'pada', 'dalam',
         'tolong', 'mohon', 'halo', 'hai', 'selamat', 'pagi', 'siang', 'sore', 'malam', 'terima', 'kasih',
-        'saja', 'juga', 'lagi', 'dulu', 'sih', 'kok', 'tentang', 'soal', 'info', 'informasi', 'cara',
+        'nama', 'anak', 'putra', 'putri', 'adik', 'les', 'saja', 'juga', 'lagi', 'dulu', 'sih', 'kok', 'tentang', 'soal', 'info', 'informasi', 'cara',
     ];
 
     private const MAKS_ISTILAH = 12;
@@ -101,10 +103,22 @@ class PencarianArtikel
     /** Istilah pencarian dari pertanyaan: huruf kecil, tanpa kata umum, unik, dibatasi. */
     public function istilah(string $pertanyaan): array
     {
+        // Perkenalan ("nama anak saya Nova", "saya bernama Budi") bukan topik pertanyaan.
+        $pertanyaan = preg_replace(
+            '/\b(?:nama\s+(?:saya|anak(?:nya)?(?:\s+saya)?|putra\s+saya|putri\s+saya|siswa|adik)|bernama)\s+\p{L}+/iu',
+            ' ',
+            $pertanyaan
+        ) ?? $pertanyaan;
+
         $kata = preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($pertanyaan), -1, PREG_SPLIT_NO_EMPTY) ?: [];
 
         $istilah = [];
         foreach ($kata as $k) {
+            // Akhiran penegas dilepas agar "biayanya" sama dengan "biaya".
+            if (mb_strlen($k) > 5 && preg_match('/^(\p{L}{3,})(?:nya|lah|kah)$/u', $k, $m)) {
+                $k = $m[1];
+            }
+
             $angka = ctype_digit($k);
             if ((!$angka && mb_strlen($k) < 2) || in_array($k, self::STOPWORD, true)) {
                 continue;

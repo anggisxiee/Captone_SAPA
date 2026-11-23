@@ -195,6 +195,9 @@ class PenangananAiTest extends TestCase
         $this->assertSame('batas', $this->proses($pesan));
         $this->assertSame('Ditangani Agen', $pesan->percakapan->fresh()->status);
         $this->assertSame(0, AntreanPesan::count());
+        // Alasannya harus terlihat agen, bukan diam-diam.
+        $draf = PesanWhatsapp::where('status', 'draf')->sole();
+        $this->assertSame('batas_balasan', $draf->meta_ai['alasan']);
         Bus::assertNotDispatched(KirimPesanKeluar::class);
     }
 

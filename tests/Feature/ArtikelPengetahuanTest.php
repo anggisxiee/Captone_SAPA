@@ -331,4 +331,26 @@ class ArtikelPengetahuanTest extends TestCase
         $this->assertLessThan(config('ai.ambang_relevansi'), $diskon['skor'],
             'KETERBATASAN: skor per artikel hanya menutup sebagian pertanyaan; tahap RAG perlu memilih artikel bertahap');
     }
+
+    public function test_perkenalan_nama_dan_akhiran_nya_tidak_menurunkan_relevansi(): void
+    {
+        ArtikelPengetahuan::create([
+            'judul' => 'Jadwal dan biaya SMP kelas 8', 'kategori' => 'jadwal', 'aktif' => true,
+            'isi' => 'Program Reguler Matematika SMP kelas 8 berlangsung Selasa dan Kamis. Biaya mulai Rp450.000 per bulan.',
+        ]);
+        $cari = app(PencarianArtikel::class);
+
+        $pertanyaan = 'Nama anak saya nova, kelas 8 smp, mau les matematika dan fisika, berapa biayanya?';
+
+        $this->assertNotContains('nova', $cari->istilah($pertanyaan));
+        $this->assertContains('biaya', $cari->istilah($pertanyaan));
+        $hasil = $cari->cari($pertanyaan, 3);
+        $this->assertGreaterThanOrEqual(0.70, $hasil[0]['skor']);
+        $this->assertNotEmpty($cari->relevan($hasil));
+    }
+
+    public function test_kata_nama_biasa_bukan_perkenalan_tetap_dihitung(): void
+    {
+        $this->assertContains('program', app(PencarianArtikel::class)->istilah('nama program apa yang ada'));
+    }
 }

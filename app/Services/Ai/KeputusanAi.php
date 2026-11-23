@@ -16,6 +16,7 @@ final class KeputusanAi
         'nada_marah' => 'Nada pesan terdeteksi marah',
         'tidak_ada_artikel' => 'Tidak ada artikel relevan yang menjawab pertanyaan',
         'keyakinan_rendah' => 'Keyakinan jawaban di bawah ambang',
+        'batas_balasan' => 'Batas balasan otomatis per jam tercapai',
     ];
 
     /**

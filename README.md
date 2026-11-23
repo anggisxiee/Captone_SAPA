@@ -138,6 +138,17 @@ mewajibkan memasukkan ulang kunci, dan alamat internal atau `http` polos ditolak
 
 Belum otomatis: mesin ini belum dipasang pada alur pesan masuk WhatsApp (tahap berikutnya).
 
+### Kontak dan prospek otomatis (F03, BR04)
+
+Setiap pesan pelanggan baru (`PesanMasuk::simpan`) memicu `PembaruanProspek`:
+
+- pengirim baru otomatis menjadi kontak dan prospek tahap `baru` (sumber `WhatsApp`); kontak lama tanpa prospek juga dibuatkan;
+- `EkstraksiPesan` membaca maksud (biaya, jadwal, pendaftaran, program, fasilitas, keluhan), nama, jenjang, kelas, dan mata pelajaran dengan **aturan** (tanpa AI), jadi gratis dan isi pesan tidak keluar ke penyedia AI;
+- hanya kolom yang masih **kosong** yang diisi, sehingga ubahan manual agen tidak tertimpa; nilai yang tidak yakin dibiarkan kosong, bukan ditebak;
+- hasil ekstraksi disimpan pada `meta_ai.ekstraksi` pesan pelanggan, dan pembuatan prospek dicatat di Log Audit.
+
+Skor prioritas masih 0 sampai PB-10 (CRM).
+
 ### Basis pengetahuan (FTS5)
 
 Artikel dikelola di halaman **Basis Pengetahuan** (Supervisor dan Administrator; semua pengguna dapat melihat).

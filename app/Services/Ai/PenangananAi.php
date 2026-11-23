@@ -62,7 +62,7 @@ class PenangananAi
         $otomatis = $nomor->mode_ai === 'otomatis' && $this->diizinkanOtomatis($pengaturan, $percakapan->kontak->nomor_telepon);
 
         if ($otomatis && $this->melewatiBatas($percakapan->id)) {
-            $this->serahkanKeAgen($percakapan, 'Batas balasan otomatis per jam tercapai.');
+            $this->serahkanKeAgen($percakapan, $pesan);
 
             return self::HASIL_BATAS;
         }
@@ -152,10 +152,20 @@ class PenangananAi
         return $jumlah >= (int) config('ai.maks_balasan_per_jam');
     }
 
-    private function serahkanKeAgen($percakapan, string $alasan): void
+    /** Pengaman: tidak membalas pelanggan, tetapi alasannya tampil di Kotak Masuk sebagai saran. */
+    private function serahkanKeAgen($percakapan, PesanWhatsapp $pesan): void
     {
         $percakapan->update(['status' => 'Ditangani Agen', 'agen_id' => null]);
 
-        LogAudit::catat('Eskalasi AI', "Percakapan #{$percakapan->id}: {$alasan}", 'percakapan', null, $percakapan->id, ['alasan' => 'batas_balasan']);
+        PesanWhatsapp::create([
+            'percakapan_id' => $percakapan->id,
+            'arah' => 'keluar',
+            'jenis_pengirim' => 'ai',
+            'isi' => MesinJawaban::PESAN_ESKALASI,
+            'status' => 'draf',
+            'meta_ai' => ['untuk_pesan_id' => $pesan->id, 'keputusan' => KeputusanAi::ESKALASI, 'alasan' => 'batas_balasan', 'mode' => 'aturan', 'maksud' => null, 'keyakinan' => 0.0, 'ambang' => 0.0, 'sumber' => []],
+        ]);
+
+        LogAudit::catat('Eskalasi AI', "Percakapan #{$percakapan->id}: batas balasan otomatis per jam tercapai.", 'percakapan', null, $percakapan->id, ['alasan' => 'batas_balasan']);
     }
 }
