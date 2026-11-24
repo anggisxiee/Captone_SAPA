@@ -203,7 +203,7 @@ class PengaturanAiTest extends TestCase
             ->assertJsonPath('sumber.0.kode', 'KB-001')
             ->assertJsonPath('artikel.0.dipakai', true)
             ->assertJsonPath('ambang', 0.62)
-            ->assertJsonPath('ambang_relevansi', 0.7)
+            ->assertJsonPath('ambang_relevansi', 0.5)
             ->assertJsonPath('jawaban_ditolak', null)
             ->assertJsonPath('pesan_pelanggan', fn ($t) => str_contains($t, 'Rp450.000') && str_contains($t, 'Sumber: Jadwal dan biaya SMP kelas 8'));
 

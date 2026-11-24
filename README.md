@@ -138,6 +138,16 @@ mewajibkan memasukkan ulang kunci, dan alamat internal atau `http` polos ditolak
 
 Belum otomatis: mesin ini belum dipasang pada alur pesan masuk WhatsApp (tahap berikutnya).
 
+### Kalibrasi mesin jawaban
+
+`php artisan ai:kalibrasi` menjalankan 49 pertanyaan uji (`database/kalibrasi/pertanyaan.php`) dan melaporkan akurasi, eskalasi berlebih, serta **halusinasi** (menjawab pertanyaan yang seharusnya diteruskan ke agen; target 0, perintah gagal bila ada). Set uji memuat 12 pertanyaan jebakan (informasi tidak ada di artikel), 5 pemicu aturan eskalasi, 4 percobaan manipulasi, dan 3 pertanyaan dua topik. Opsi: `--tanpa-ai` (mode aturan), `--ambang-relevansi=`, `--ambang-keyakinan=`, `--simpan=berkas.json`.
+
+Hasil dengan artikel contoh (SumoPod `gpt-4o-mini`): ambang relevansi 0,70 memberi 92%, sedangkan 0,50 dan 0,35 sama-sama 96% dengan 0 halusinasi, jadi **0,50** dipilih. Setelah label artikel ikut dikirim ke AI sebagai "istilah terkait" (UTBK = SNBT), hasilnya 49/49 benar, 0 halusinasi, 2 eskalasi berlebih yang aman (pertanyaan dua topik dan satu percobaan manipulasi).
+
+Saat penyedia AI tidak dapat dipakai, jawaban dikutip dari artikel tanpa ada yang menilai kecukupannya, jadi dipakai ambang lebih ketat (`AI_AMBANG_RELEVANSI_ATURAN`, 0,70) dan pemeriksaan tambahan: pertanyaan harga harus ketemu artikel bernominal, serta jenjang, kelas, dan mata pelajaran yang disebut harus disebut artikel. Hasil mode aturan: 94%, 0 halusinasi.
+
+**Batasan:** artikelnya masih contoh fiktif. Ulangi kalibrasi dan perbarui set pertanyaan setelah artikel mitra masuk.
+
 ### Kontak dan prospek otomatis (F03, BR04)
 
 Setiap pesan pelanggan baru (`PesanMasuk::simpan`) memicu `PembaruanProspek`:

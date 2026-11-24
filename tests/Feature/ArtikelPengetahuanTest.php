@@ -255,7 +255,7 @@ class ArtikelPengetahuanTest extends TestCase
         $this->actingAs($this->user('Supervisor'))
             ->postJson(route('basis-pengetahuan.uji'), ['pertanyaan' => 'biaya SMP kelas 8'])
             ->assertOk()
-            ->assertJsonPath('ambang', 0.7)
+            ->assertJsonPath('ambang', 0.5)
             ->assertJsonPath('istilah', ['biaya', 'smp', 'kelas', '8'])
             ->assertJsonPath('hasil.0.kode', 'KB-001')
             ->assertJsonPath('hasil.0.kategori', 'Jadwal')

@@ -29,6 +29,12 @@ return [
     // percakapan per jam. Lewat batas ini AI berhenti dan percakapan diserahkan ke agen.
     'maks_balasan_per_jam' => (int) env('AI_MAKS_BALASAN_PER_JAM', 20),
 
-    // Artikel dengan skor relevansi di bawah ambang ini tidak dipakai AI (mockup halaman Basis Pengetahuan).
-    'ambang_relevansi' => (float) env('AI_AMBANG_RELEVANSI', 0.70),
+    // Artikel dengan skor relevansi di bawah ambang ini tidak diberikan ke AI. Sengaja longgar
+    // (hasil kalibrasi: 0,50 menjawab lebih banyak tanpa menambah halusinasi), karena AI menilai
+    // sendiri kecukupan artikel ("cukup") dan keyakinan akhir masih diperiksa terhadap ambang.
+    'ambang_relevansi' => (float) env('AI_AMBANG_RELEVANSI', 0.50),
+
+    // Saat penyedia AI tidak dapat dipakai, jawaban dikutip dari artikel apa adanya tanpa ada yang
+    // menilai kecukupannya, jadi hanya kecocokan yang kuat yang dipakai.
+    'ambang_relevansi_aturan' => (float) env('AI_AMBANG_RELEVANSI_ATURAN', 0.70),
 ];
