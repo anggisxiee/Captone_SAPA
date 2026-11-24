@@ -218,4 +218,40 @@ class ProspekCrmTest extends TestCase
         $this->assertSame('Dari pameran sekolah', $p->aktivitas()->sole()->catatan);
         $this->assertGreaterThan(0, $p->skor);
     }
+
+    public function test_detail_prospek_menautkan_ke_percakapan_dan_kotak_masuk_membukanya(): void
+    {
+        $nomor = $this->nomor();
+        $p = $this->prospek('6285711110001', [], $nomor);
+        $lain = $this->prospek('6285711110002', [], $nomor);
+        $percakapan = Percakapan::where('kontak_id', $p->kontak_id)->first();
+        $admin = $this->user();
+
+        $data = $this->actingAs($admin)->get('/prospek')->viewData('prospek');
+        $this->assertSame($percakapan->id, collect($data)->firstWhere('id', $p->id)['percakapanId']);
+
+        // Kotak Masuk membuka percakapan yang diminta, bukan yang pertama dalam daftar.
+        $this->actingAs($admin)->get('/kotak-masuk?percakapan=' . $percakapan->id)->assertOk();
+        $chat = $this->actingAs($admin)->get('/kotak-masuk?percakapan=' . $percakapan->id)->viewData('chatAwal');
+        $this->assertSame($percakapan->id, $chat['id']);
+        $this->assertNotSame($lain->id, $chat['id']);
+    }
+
+    public function test_catatan_kosong_memakai_pesan_srs(): void
+    {
+        $p = $this->prospek();
+
+        $this->lanjut($p, ['catatan' => ''])->assertSessionHasErrors(['catatan' => 'Catatan wajib diisi.']);
+    }
+
+    public function test_kotak_masuk_menampilkan_tahap_skor_dan_sumber_prospek_pada_konteks_pelanggan(): void
+    {
+        $nomor = $this->nomor();
+        $p = $this->prospek('6285711110001', ['tahap' => 'tertarik', 'skor' => 64], $nomor);
+        $p->kontak->update(['sumber' => 'Instagram']);
+
+        $chat = $this->actingAs($this->user())->get('/kotak-masuk')->viewData('daftar')[0];
+
+        $this->assertSame(['Tertarik', '64 / 100', 'Instagram'], [$chat['tahap'], $chat['skor'], $chat['sumber']]);
+    }
 }

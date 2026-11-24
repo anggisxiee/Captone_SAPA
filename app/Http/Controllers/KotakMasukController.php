@@ -33,7 +33,7 @@ class KotakMasukController extends Controller
         [$daftar, $jumlahBelumDibalas] = $this->muatDaftar($nomorWhatsapp);
 
         // Percakapan yang dipilih kembali setelah membalas atau mengubah status.
-        $idTerpilih = session('percakapan_terpilih');
+        $idTerpilih = (int) (request()->query('percakapan') ?: session('percakapan_terpilih'));
         $chatAwal = collect($daftar)->firstWhere('id', $idTerpilih)
             ?? ($daftar[0] ?? null);
 
@@ -70,15 +70,13 @@ class KotakMasukController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        $prospek = Prospek::whereIn(
-            'nomor_telepon',
-            $percakapan->pluck('kontak.nomor_telepon')
-        )->get()->keyBy('nomor_telepon');
+        $prospek = Prospek::whereIn('kontak_id', $percakapan->pluck('kontak_id')->unique())
+            ->get()->keyBy('kontak_id');
 
         $daftar = $percakapan
             ->map(fn (Percakapan $p) => $this->ubahKeBentukTampilan(
                 $p,
-                $prospek->get($p->kontak->nomor_telepon)
+                $prospek->get($p->kontak_id)
             ))
             ->values()
             ->all();
@@ -313,7 +311,7 @@ class KotakMasukController extends Controller
             'jenjang' => trim(($kontak->jenjang ?? '') . ' ' . ($kontak->kelas ?? '')) ?: '-',
             'mapel' => $kontak->mapel ?: '-',
             'cabang' => '-',
-            'sumber' => $prospek?->sumber ?: '-',
+            'sumber' => $kontak->sumber ?: '-',
             'tahap' => $prospek ? ucfirst($prospek->tahap) : '-',
             'skor' => $prospek ? "{$prospek->skor} / 100" : '-',
             // Keputusan AI terbaru dari meta_ai pesan AI (draf atau terkirim).

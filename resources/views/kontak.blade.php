@@ -18,7 +18,7 @@
     $kontakGagal = old('_kontak_id') ? [
         'id' => (int) old('_kontak_id'),
         'nama' => old('nama'), 'nomor_telepon' => old('nomor_telepon'), 'jenjang' => old('jenjang'),
-        'kelas' => old('kelas'), 'mapel' => old('mapel'), 'kota' => old('kota'), 'sumber' => old('sumber'),
+        'kelas' => old('kelas'), 'mapel' => old('mapel'), 'kota' => old('kota'), 'sumber' => old('sumber'), 'label' => old('label'),
     ] : null;
 @endphp
 
@@ -95,7 +95,7 @@
                         <td class="td !px-1.5 !py-2">
                             @if ($bolehUbah($k))
                                 <button type="button"
-                                    @click="c = @js(['id' => $k->id, 'nama' => $k->nama, 'nomor_telepon' => $k->nomor_telepon, 'jenjang' => $k->jenjang, 'kelas' => $k->kelas, 'mapel' => $k->mapel, 'kota' => $k->kota, 'sumber' => $k->sumber]); open = true"
+                                    @click="c = @js(['id' => $k->id, 'nama' => $k->nama, 'nomor_telepon' => $k->nomor_telepon, 'jenjang' => $k->jenjang, 'kelas' => $k->kelas, 'mapel' => $k->mapel, 'kota' => $k->kota, 'sumber' => $k->sumber, 'label' => $k->label, 'percakapanId' => $k->percakapan->sortByDesc('pesan_terakhir_pada')->first()?->id]); open = true"
                                     class="btn btn-outline !text-[9px] !px-2 !py-1">
                                     Ubah
                                 </button>
@@ -105,7 +105,7 @@
                 @empty
                     <tr>
                         <td colspan="8" class="td !text-[11px] text-center text-slate-400 !py-6">
-                            {{ ($q !== '' || $jenjang !== '' || $sumber !== '') ? 'Tidak ada kontak yang cocok dengan pencarian.' : 'Belum ada kontak. Kontak muncul otomatis saat ada pesan masuk.' }}
+                            {{ ($q !== '' || $jenjang !== '' || $sumber !== '') ? 'Kontak tidak ditemukan.' : 'Belum ada kontak. Kontak muncul otomatis saat ada pesan masuk.' }}
                         </td>
                     </tr>
                 @endforelse
@@ -180,9 +180,17 @@
                         <label class="label !text-[10px]">Sumber</label>
                         <input name="sumber" class="field !text-[11px] !py-1.5" x-model="c.sumber" maxlength="100">
                     </div>
+
+                    <div class="col-span-2">
+                        <label class="label !text-[10px]">Label</label>
+                        <input name="label" class="field !text-[11px] !py-1.5" x-model="c.label" maxlength="100" placeholder="mis. VIP, tindak lanjut minggu ini">
+                    </div>
                 </div>
 
-                <p class="text-[9px] text-slate-400 mt-2">Tahap prospek diubah di halaman Prospek.</p>
+                <p class="text-[9px] text-slate-400 mt-2">
+                    Tahap prospek diubah di halaman Prospek.
+                    <a x-show="c.percakapanId" :href="'{{ route('kotak-masuk') }}?percakapan=' + c.percakapanId" class="text-teal-700 underline">Lihat riwayat percakapan</a>
+                </p>
 
                 <div class="flex justify-end gap-2 pt-3">
                     <button type="button" @click="open=false" class="btn btn-outline !text-[10px] !py-1.5 !px-2.5">Batal</button>

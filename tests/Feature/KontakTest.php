@@ -79,12 +79,13 @@ class KontakTest extends TestCase
         $p = Prospek::create(['kontak_id' => $k->id, 'tahap' => 'baru', 'skor' => 0]);
 
         $this->actingAs($this->user())->put("/kontak/{$k->id}", [
-            'nama' => ' Ratna Dewi ', 'nomor_telepon' => '0857-1111-9999', 'jenjang' => 'SMP', 'kelas' => '8', 'mapel' => '', 'kota' => 'Sragen', 'sumber' => 'Rekomendasi',
+            'nama' => ' Ratna Dewi ', 'nomor_telepon' => '0857-1111-9999', 'jenjang' => 'SMP', 'kelas' => '8', 'mapel' => '', 'kota' => 'Sragen', 'sumber' => 'Rekomendasi', 'label' => 'VIP',
             'f_jenjang' => 'SMA',
         ])->assertRedirect('/kontak?jenjang=SMA')->assertSessionHasNoErrors();
 
         $k->refresh();
         $this->assertSame(['Ratna Dewi', '6285711119999', 'SMP', null, 'Sragen'], [$k->nama, $k->nomor_telepon, $k->jenjang, $k->mapel, $k->kota]);
+        $this->assertSame('VIP', $k->label);
         $this->assertGreaterThan(0, $p->fresh()->skor); // BR06: skor dihitung ulang saat data kontak berubah
         $this->assertDatabaseHas('log_audit', ['aksi' => 'Ubah kontak']);
     }

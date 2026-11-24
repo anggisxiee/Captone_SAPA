@@ -56,6 +56,7 @@ class KontakController extends Controller
             'mapel' => 'nullable|string|max:255',
             'kota' => 'nullable|string|max:100',
             'sumber' => 'nullable|string|max:100',
+            'label' => 'nullable|string|max:100',
         ], [
             'nomor_telepon.regex' => 'Nomor WhatsApp tidak valid. Contoh: 081234567890.',
             'nomor_telepon.unique' => 'Nomor WhatsApp sudah dipakai kontak lain.',

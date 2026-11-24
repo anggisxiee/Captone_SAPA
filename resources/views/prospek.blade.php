@@ -313,6 +313,12 @@
                         <div x-text="prospekTerpilih.pj || 'Belum ditugaskan'"></div>
                     </div>
 
+                    <a x-show="prospekTerpilih.percakapanId"
+                       :href="'{{ route('kotak-masuk') }}?percakapan=' + prospekTerpilih.percakapanId"
+                       class="inline-block text-[11px] text-teal-700 underline">
+                        Buka percakapan di Kotak Masuk
+                    </a>
+
                     {{-- Tindak lanjut (BR05: catatan wajib) --}}
                     <form
                         x-show="prospekTerpilih.bisaUbah"

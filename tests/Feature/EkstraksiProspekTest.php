@@ -86,7 +86,7 @@ class EkstraksiProspekTest extends TestCase
 
     // --- pipeline webhook --------------------------------------------------------------------
 
-    private function kirim(string $isi, string $dari = '6285711110001', ?string $nama = null, string $id = null): void
+    private function kirim(string $isi, string $dari = '6285711110001', ?string $nama = null, ?string $id = null): void
     {
         config(['whatsapp.webhook_token' => 'tok']);
         NomorWhatsapp::firstOrCreate(['nomor' => '6281200000001'], ['label' => 'Admisi', 'status_sesi' => 'Tersambung', 'mode_ai' => 'mati']);

@@ -21,7 +21,7 @@ class ProspekController extends Controller
         $pengguna = auth()->user();
         $nomorIds = AksesNomor::dapatDilihat($pengguna);
 
-        $kueri = Prospek::with(['kontak', 'penanggungJawab', 'aktivitas' => fn ($q) => $q->with('user')->orderByDesc('waktu')->orderByDesc('id')])
+        $kueri = Prospek::with(['kontak.percakapan', 'penanggungJawab', 'aktivitas' => fn ($q) => $q->with('user')->orderByDesc('waktu')->orderByDesc('id')])
             ->orderByDesc('skor')->orderByDesc('id');
 
         // BR03: Agen/CS hanya prospek dari percakapan pada nomor yang ditugaskan.
@@ -49,6 +49,10 @@ class ProspekController extends Controller
             'pj' => $p->penanggungJawab?->name,
             'tindakLanjut' => $p->tindak_lanjut_berikut?->format('Y-m-d'),
             'bisaUbah' => $this->bolehMengelola($dikelola, $p),
+            // Percakapan terbaru pada nomor yang boleh dilihat pengguna (tautan dari detail prospek).
+            'percakapanId' => $p->kontak?->percakapan
+                ->filter(fn ($c) => $nomorIds === null || in_array((int) $c->nomor_whatsapp_id, $nomorIds, true))
+                ->sortByDesc('pesan_terakhir_pada')->first()?->id,
             'aktivitas' => $p->aktivitas->take(15)->map(fn (AktivitasProspek $a) => [
                 'jenis' => $a->jenis,
                 'catatan' => $a->catatan,
@@ -147,13 +151,13 @@ class ProspekController extends Controller
             'catatan' => 'required|string|max:2000',
             'tindak_lanjut_berikut' => 'nullable|date|after_or_equal:today',
         ], [
-            'catatan.required' => 'Catatan aktivitas wajib diisi.',
+            'catatan.required' => 'Catatan wajib diisi.',
             'tindak_lanjut_berikut.after_or_equal' => 'Tanggal tindak lanjut tidak boleh sebelum hari ini.',
         ]);
 
         $catatan = trim($data['catatan']);
         if ($catatan === '') {
-            return back()->withErrors(['catatan' => 'Catatan aktivitas wajib diisi.'])->withInput();
+            return back()->withErrors(['catatan' => 'Catatan wajib diisi.'])->withInput();
         }
 
         $lama = $prospek->tahap;
