@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ProsesBalasanAi;
 use App\Models\NomorWhatsapp;
 use App\Services\WhatsApp\PesanMasuk;
 use App\Services\WhatsApp\SesiNomor;
@@ -43,6 +44,10 @@ class WebhookWhatsappController extends Controller
             $data['isi'],
             $data['id_pesan'] ?? null
         );
+
+        if (!$hasil['duplikat'] && config('ai.proses_pesan_masuk')) {
+            ProsesBalasanAi::dispatch($hasil['pesan']->id);
+        }
 
         return response()->json([
             'pesan' => $hasil['duplikat'] ? 'Pesan sudah pernah diterima.' : 'Pesan disimpan.',

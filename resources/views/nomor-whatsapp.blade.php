@@ -21,7 +21,8 @@
     form: {
         nama: '',
         nomor: '',
-        tujuan: 'Admin'
+        tujuan: 'Admin',
+        mode_ai: 'draf'
     },
     qr: { buka: false, id: null, nama: '', nomor: '', svg: null, sisa: 0, kedaluwarsa: false, galat: '' },
     pewaktu: null,
@@ -78,6 +79,7 @@
         this.form.nama = item.nama;
         this.form.nomor = item.nomor;
         this.form.tujuan = item.tujuan;
+        this.form.mode_ai = item.mode_ai;
         this.edit = true;
     },
     bukaHapus(item) {
@@ -148,7 +150,7 @@ class="text-xs">
 
                 <div class="grid grid-cols-2 gap-x-8 gap-y-1.5 mt-3 text-[10px] w-full">
                     <span class="text-slate-500">Mode AI</span>
-                    <span class="font-medium text-right">Belum diatur</span>
+                    <span class="font-medium text-right">{{ ['otomatis' => 'Otomatis', 'draf' => 'Saran (draf)', 'mati' => 'Mati'][$item->mode_ai] ?? $item->mode_ai }}</span>
 
                     <span class="text-slate-500">Kesehatan nomor</span>
                     <span class="font-medium text-right">-</span>
@@ -182,7 +184,7 @@ class="text-xs">
 
                     {{-- Kelola --}}
                     <button
-                        @click="bukaEdit(@js(['id' => $item->id, 'nama' => $item->label, 'nomor' => $item->nomor, 'tujuan' => $item->tujuan]))"
+                        @click="bukaEdit(@js(['id' => $item->id, 'nama' => $item->label, 'nomor' => $item->nomor, 'tujuan' => $item->tujuan, 'mode_ai' => $item->mode_ai]))"
                         class="btn btn-outline !text-[10px] !px-2.5 !py-1">
                         Kelola
                     </button>
@@ -330,6 +332,20 @@ class="text-xs">
                             <option value="Admin">Admin</option>
                             <option value="Sales">Sales</option>
                         </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] text-slate-500 mb-1">
+                            Mode AI
+                        </label>
+                        <select name="mode_ai" x-model="form.mode_ai" class="field w-full !text-xs">
+                            <option value="draf">Saran (draf): AI menyarankan, agen yang mengirim</option>
+                            <option value="otomatis">Otomatis: AI membalas sendiri</option>
+                            <option value="mati">Mati: AI tidak ikut menangani</option>
+                        </select>
+                        <p class="text-[10px] text-slate-400 mt-1">
+                            Mode otomatis hanya membalas nomor pada daftar nomor uji di Pengaturan AI (bila diisi).
+                        </p>
                     </div>
                 </div>
 

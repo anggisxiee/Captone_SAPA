@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Kontak extends Model
 {
@@ -24,6 +25,11 @@ class Kontak extends Model
     public function getNamaTampilAttribute(): string
     {
         return $this->nama ?: $this->nomor_telepon;
+    }
+
+    public function prospek(): HasOne
+    {
+        return $this->hasOne(Prospek::class, 'kontak_id');
     }
 
     public function percakapan(): HasMany

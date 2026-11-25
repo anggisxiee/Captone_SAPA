@@ -51,6 +51,8 @@ class SesiNomor
 
     public function tandaiTersambung(NomorWhatsapp $nomor): void
     {
+        $sudahTersambung = $nomor->status_sesi === 'Tersambung';
+
         $nomor->update([
             'status_sesi' => 'Tersambung',
             'qr_token' => null,
@@ -58,7 +60,11 @@ class SesiNomor
             'terakhir_aktif_pada' => now(),
         ]);
 
-        LogAudit::catat('Nomor tersambung', "{$nomor->label} berhasil tertaut", 'nomor_whatsapp', null, $nomor->id);
+        // Gateway melaporkan "tersambung" lagi setiap sambungan terbuka ulang (sekitar tiap 15 menit);
+        // hanya perpindahan dari status lain yang layak masuk log audit.
+        if (!$sudahTersambung) {
+            LogAudit::catat('Nomor tersambung', "{$nomor->label} berhasil tertaut", 'nomor_whatsapp', null, $nomor->id);
+        }
     }
 
     public function tandaiTerputus(NomorWhatsapp $nomor): void

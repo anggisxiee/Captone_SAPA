@@ -30,6 +30,36 @@ class KotakMasukController extends Controller
         $nomorWhatsapp = $this->nomorDapatDilihat($pengguna);
         $nomorBolehBalas = $this->nomorBolehBalas($pengguna);
 
+        [$daftar, $jumlahBelumDibalas] = $this->muatDaftar($nomorWhatsapp);
+
+        // Percakapan yang dipilih kembali setelah membalas atau mengubah status.
+        $idTerpilih = (int) (request()->query('percakapan') ?: session('percakapan_terpilih'));
+        $chatAwal = collect($daftar)->firstWhere('id', $idTerpilih)
+            ?? ($daftar[0] ?? null);
+
+        return view('kotak-masuk', [
+            'penggunaLogin' => $pengguna,
+            'nomorWhatsapp' => $nomorWhatsapp,
+            'nomorBolehBalas' => $nomorBolehBalas,
+            'daftar' => $daftar,
+            'chatAwal' => $chatAwal,
+            'jumlahBelumDibalas' => $jumlahBelumDibalas,
+        ]);
+    }
+
+    /**
+     * Data percakapan terbaru untuk pembaruan otomatis halaman (polling).
+     */
+    public function data()
+    {
+        [$daftar, $jumlah] = $this->muatDaftar($this->nomorDapatDilihat(auth()->user()));
+
+        return response()->json(['daftar' => $daftar, 'jumlahBelumDibalas' => $jumlah]);
+    }
+
+    /** @return array{0: array<int, array<string, mixed>>, 1: int} */
+    private function muatDaftar(Collection $nomorWhatsapp): array
+    {
         $percakapan = Percakapan::with([
             'kontak',
             'nomorWhatsapp',
@@ -40,32 +70,18 @@ class KotakMasukController extends Controller
             ->orderByDesc('id')
             ->get();
 
-        $prospek = Prospek::whereIn(
-            'nomor_telepon',
-            $percakapan->pluck('kontak.nomor_telepon')
-        )->get()->keyBy('nomor_telepon');
+        $prospek = Prospek::whereIn('kontak_id', $percakapan->pluck('kontak_id')->unique())
+            ->get()->keyBy('kontak_id');
 
         $daftar = $percakapan
             ->map(fn (Percakapan $p) => $this->ubahKeBentukTampilan(
                 $p,
-                $prospek->get($p->kontak->nomor_telepon)
+                $prospek->get($p->kontak_id)
             ))
             ->values()
             ->all();
 
-        // Percakapan yang dipilih kembali setelah membalas atau mengubah status.
-        $idTerpilih = session('percakapan_terpilih');
-        $chatAwal = collect($daftar)->firstWhere('id', $idTerpilih)
-            ?? ($daftar[0] ?? null);
-
-        return view('kotak-masuk', [
-            'penggunaLogin' => $pengguna,
-            'nomorWhatsapp' => $nomorWhatsapp,
-            'nomorBolehBalas' => $nomorBolehBalas,
-            'daftar' => $daftar,
-            'chatAwal' => $chatAwal,
-            'jumlahBelumDibalas' => $percakapan->filter(fn (Percakapan $p) => $p->belum_dibalas)->count(),
-        ]);
+        return [$daftar, $percakapan->filter(fn (Percakapan $p) => $p->belum_dibalas)->count()];
     }
 
     /**
@@ -255,7 +271,11 @@ class KotakMasukController extends Controller
     {
         $kontak = $p->kontak;
 
+        // Eskalasi AI: diserahkan ke agen tanpa agen yang ditugaskan (BR08: AI berhenti).
+        $eskalasiAi = $p->status === 'Ditangani Agen' && $p->agen_id === null;
+
         [$label, $warna] = match (true) {
+            $eskalasiAi => ['Eskalasi AI', 'b-red'],
             $p->belum_dibalas => ['Belum dibalas', 'b-amber'],
             $p->status === 'Ditangani AI' => ['Ditangani AI', 'b-green'],
             $p->status === 'Ditangani Agen' => ['Ditangani agen', 'b-slate'],
@@ -263,13 +283,18 @@ class KotakMasukController extends Controller
             default => ['Baru', 'b-amber'],
         };
 
-        $pesan = $p->pesan->map(fn (PesanWhatsapp $m) => [
+        // Saran AI berstatus "draf" bukan bagian percakapan: hanya tampil di panel Keputusan AI.
+        $jejak = $p->pesan->where('jenis_pengirim', 'ai')->whereNotNull('meta_ai')->last();
+        $meta = $jejak?->meta_ai ?? [];
+        $judulArtikel = collect($meta['sumber'] ?? [])->pluck('judul')->implode('; ');
+
+        $pesan = $p->pesan->where('status', '!=', 'draf')->map(fn (PesanWhatsapp $m) => [
             'pengirim' => $m->jenis_pengirim,
             'isi' => $m->isi,
             'jam' => $m->created_at?->format('H:i') ?? '',
-        ])->all();
+        ])->values()->all();
 
-        $terakhir = $p->pesan->last();
+        $terakhir = $p->pesan->where('status', '!=', 'draf')->last();
 
         return [
             'id' => $p->id,
@@ -286,14 +311,19 @@ class KotakMasukController extends Controller
             'jenjang' => trim(($kontak->jenjang ?? '') . ' ' . ($kontak->kelas ?? '')) ?: '-',
             'mapel' => $kontak->mapel ?: '-',
             'cabang' => '-',
-            'sumber' => $prospek?->sumber ?: '-',
+            'sumber' => $kontak->sumber ?: '-',
             'tahap' => $prospek ? ucfirst($prospek->tahap) : '-',
             'skor' => $prospek ? "{$prospek->skor} / 100" : '-',
-            // Diisi pada Sprint 2 (klasifikasi maksud dan jawaban AI).
-            'maksud' => '-',
-            'keyakinan' => '-',
-            'ambang' => '-',
-            'artikel' => '-',
+            // Keputusan AI terbaru dari meta_ai pesan AI (draf atau terkirim).
+            'maksud' => $meta['maksud'] ?? '-',
+            'keyakinan' => isset($meta['keyakinan']) ? number_format($meta['keyakinan'], 2) : '-',
+            'ambang' => isset($meta['ambang']) ? number_format($meta['ambang'], 2) : '-',
+            'artikel' => $judulArtikel ?: '-',
+            'keputusanAi' => $meta ? (($meta['keputusan'] ?? '') === 'eskalasi'
+                ? 'Eskalasi: ' . (\App\Services\Ai\KeputusanAi::ALASAN[$meta['alasan'] ?? ''] ?? '-')
+                : 'Jawab dari artikel') : '-',
+            'modeAi' => $meta ? (($jejak->status === 'draf') ? 'Saran (belum dikirim)' : 'Otomatis (terkirim)') : '-',
+            'saranAi' => ($jejak && $jejak->status === 'draf') ? $jejak->isi : '',
             'pesan' => $pesan,
         ];
     }

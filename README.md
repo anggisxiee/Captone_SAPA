@@ -93,6 +93,88 @@ curl -X POST http://127.0.0.1:8000/api/webhook/whatsapp/pesan \
 Respons: `201` tersimpan, `200` duplikat (`id_pesan` sama), `401` token salah,
 `404` nomor tidak dikenal, `409` nomor tidak tersambung atau nonaktif.
 
+## AI (SumoPod / kompatibel OpenAI)
+
+SAPA memakai penyedia AI lewat antarmuka `App\Services\Ai\AiClient`. Driver diatur dengan `AI_DRIVER`:
+
+| Driver | Keterangan |
+|---|---|
+| `fake` (bawaan) | Simulasi tanpa penyedia. Dipakai tes dan pengembangan tanpa kunci. |
+| `openai` | Penyedia kompatibel OpenAI (`POST {AI_BASE_URL}/chat/completions`). Bawaan: SumoPod `https://ai.sumopod.com/v1`, model `gpt-4o-mini`. |
+
+```bash
+# di .env
+AI_DRIVER=openai
+AI_API_KEY=sk-...            # buat di dashboard SumoPod, beri batas anggaran
+
+php artisan ai:uji           # uji koneksi + kunci + tampilkan saldo (kunci disamarkan)
+php artisan ai:uji "Halo"    # sekalian kirim satu pesan uji
+```
+
+Kunci yang disimpan di halaman **Pengaturan AI** (terenkripsi di basis data) mengalahkan `.env` **secara utuh**
+(alamat dan model ikut dari halaman itu), supaya kunci satu penyedia tidak pernah terkirim ke alamat penyedia lain.
+Bila penyedia gagal atau melewati batas waktu, pemanggil beralih ke mode aturan bawaan.
+
+### Mesin jawaban dan eskalasi
+
+`App\Services\Ai\MesinJawaban` memutuskan satu pesan pelanggan, dari langkah yang paling murah ke paling mahal:
+
+1. kata kunci eskalasi (aturan, gratis) -> eskalasi
+2. nada marah (aturan, gratis) -> eskalasi
+3. artikel relevan dengan FTS5 (gratis); tanpa artikel -> eskalasi (BR07), **AI tidak dipanggil**
+4. jawaban dari artikel oleh penyedia AI, disertai sumber; bila penyedia gagal atau melewati batas waktu -> **mode aturan bawaan** (artikel dikutip apa adanya)
+5. keyakinan di bawah ambang (Pengaturan AI) -> eskalasi
+
+Keyakinan = 0,5 x skor relevansi artikel + 0,5 x nilai yang dinilai model sendiri (rumus awal, dikalibrasi dengan 50 pertanyaan uji).
+Pesan pelanggan hanya masuk sebagai peran `user`, tidak pernah ke instruksi sistem, dan kode sumber karangan model dibuang.
+
+```bash
+php artisan ai:jawab "berapa biaya bimbel SMP kelas 8?"   # jalankan mesin pada satu pesan, tanpa mengirim apa pun
+```
+
+Halaman **Pengaturan AI** memuat konsol "Uji Keputusan" yang memakai mesin yang sama. Kunci baru diuji ke penyedia sebelum
+disimpan (ditolak bila penyedia menolak), nilai kunci tidak pernah dicatat di log audit, mengganti alamat penyedia
+mewajibkan memasukkan ulang kunci, dan alamat internal atau `http` polos ditolak di luar pengembangan.
+
+Belum otomatis: mesin ini belum dipasang pada alur pesan masuk WhatsApp (tahap berikutnya).
+
+### Kalibrasi mesin jawaban
+
+`php artisan ai:kalibrasi` menjalankan 49 pertanyaan uji (`database/kalibrasi/pertanyaan.php`) dan melaporkan akurasi, eskalasi berlebih, serta **halusinasi** (menjawab pertanyaan yang seharusnya diteruskan ke agen; target 0, perintah gagal bila ada). Set uji memuat 12 pertanyaan jebakan (informasi tidak ada di artikel), 5 pemicu aturan eskalasi, 4 percobaan manipulasi, dan 3 pertanyaan dua topik. Opsi: `--tanpa-ai` (mode aturan), `--ambang-relevansi=`, `--ambang-keyakinan=`, `--simpan=berkas.json`.
+
+Hasil dengan artikel contoh (SumoPod `gpt-4o-mini`): ambang relevansi 0,70 memberi 92%, sedangkan 0,50 dan 0,35 sama-sama 96% dengan 0 halusinasi, jadi **0,50** dipilih. Setelah label artikel ikut dikirim ke AI sebagai "istilah terkait" (UTBK = SNBT), hasilnya 49/49 benar, 0 halusinasi, 2 eskalasi berlebih yang aman (pertanyaan dua topik dan satu percobaan manipulasi).
+
+Saat penyedia AI tidak dapat dipakai, jawaban dikutip dari artikel tanpa ada yang menilai kecukupannya, jadi dipakai ambang lebih ketat (`AI_AMBANG_RELEVANSI_ATURAN`, 0,70) dan pemeriksaan tambahan: pertanyaan harga harus ketemu artikel bernominal, serta jenjang, kelas, dan mata pelajaran yang disebut harus disebut artikel. Hasil mode aturan: 94%, 0 halusinasi.
+
+**Batasan:** artikelnya masih contoh fiktif. Ulangi kalibrasi dan perbarui set pertanyaan setelah artikel mitra masuk.
+
+### Kontak dan prospek otomatis (F03, BR04)
+
+Setiap pesan pelanggan baru (`PesanMasuk::simpan`) memicu `PembaruanProspek`:
+
+- pengirim baru otomatis menjadi kontak dan prospek tahap `baru` (sumber `WhatsApp`); kontak lama tanpa prospek juga dibuatkan;
+- `EkstraksiPesan` membaca maksud (biaya, jadwal, pendaftaran, program, fasilitas, keluhan), nama, jenjang, kelas, dan mata pelajaran dengan **aturan** (tanpa AI), jadi gratis dan isi pesan tidak keluar ke penyedia AI;
+- hanya kolom yang masih **kosong** yang diisi, sehingga ubahan manual agen tidak tertimpa; nilai yang tidak yakin dibiarkan kosong, bukan ditebak;
+- hasil ekstraksi disimpan pada `meta_ai.ekstraksi` pesan pelanggan, dan pembuatan prospek dicatat di Log Audit.
+
+### CRM dan skor prioritas (F08, BR05, BR06)
+
+Halaman Prospek menampilkan papan per tahap (diurutkan menurut skor), rincian skor, riwayat aktivitas, dan form tindak lanjut.
+
+- **Skor 0..100** dari lima komponen berbobot (`config/prospek.php`, bobot awal 25/25/20/15/15): kelengkapan data, urgensi (penanda seperti "ujian", "segera"), minat program (pendaftaran > biaya > jadwal > program > fasilitas), responsivitas chat (jumlah pesan + balasan atas pesan kita dalam 24 jam), dan riwayat (tahap + aktivitas). Aturannya deterministik, bukan AI, dan setiap komponen menyimpan nilai, poin, serta alasannya di `prospek.rincian_skor`.
+- Skor dihitung ulang saat ada pesan pelanggan, data kontak diubah, tahap berubah, atau aktivitas dicatat. Setelah mengubah bobot jalankan `php artisan prospek:hitung-ulang`.
+- **BR05:** setiap tindak lanjut wajib bercatatan; perpindahan tahap tercatat sebagai aktivitas dan di Log Audit. Penanggung jawab diisi pengguna yang pertama menindaklanjuti.
+- **BR03:** Agen/CS hanya melihat prospek pada nomor yang ditugaskan dan hanya yang berhak "Balas chat"/"Kelola" yang boleh mengubah.
+- Kolom identitas lama di `prospek` (nama, nomor, jenjang, sumber, catatan) sudah dibuang; datanya kini di `kontak`, catatan lama dipindah menjadi aktivitas.
+- Belum: hitungan konversi harian saat prospek masuk tahap "daftar" menunggu metrik harian (Sprint 3).
+
+### Basis pengetahuan (FTS5)
+
+Artikel dikelola di halaman **Basis Pengetahuan** (Supervisor dan Administrator; semua pengguna dapat melihat).
+Pencarian memakai SQLite FTS5 dengan peringkat `bm25`; indeks dijaga sinkron oleh pemicu basis data. Skor 0 sampai 1
+pada "Uji pencarian" = 0,6 x cakupan istilah + 0,4 x bm25 relatif; artikel di bawah `AI_AMBANG_RELEVANSI` tidak dipakai AI.
+Tidak ada stemming bahasa Indonesia: gunakan kolom **label** untuk sinonim ("daftar" tidak menemukan "pendaftaran").
+
 ## Hak akses
 
 | Role | Akses |
@@ -119,6 +201,10 @@ cd wa-gateway && npm test   # gateway Node (tanpa perlu Baileys terpasang)
 | `KirimPesanKeluarTest` | Pengiriman, percobaan ulang, pusat risiko |
 | `NomorWhatsappSesiTest` | Penautan QR, kedaluwarsa, putus (TC11) |
 | `BaileysGatewayTest` | Driver `baileys` (gateway dipalsukan), event QR, gateway mati |
+| `AiClientTest` | Klien AI kompatibel OpenAI (penyedia dipalsukan), konfigurasi, perintah `ai:uji` |
+| `ArtikelPengetahuanTest` | Basis pengetahuan: hak akses, CRUD, pengindeksan FTS5, skor dan ambang |
+| `MesinJawabanTest` | Mesin jawaban: eskalasi, jawaban AI dengan sumber, mode aturan bawaan, nada marah |
+| `PengaturanAiTest` | Pengaturan AI: uji kunci, keamanan alamat dan log, batas BR13, konsol Uji Keputusan |
 | `HalamanTest` | Semua halaman terbuka sesuai role |
 | `SkemaSrsTest` | Tiap tabel dan kolom kamus data SRS ada, plus perilaku turunannya (PB-04) |
 | `MigrasiSkemaSrsTest` | Peningkatan dari skema lama dengan data nyata tidak menghilangkan data |
