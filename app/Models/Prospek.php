@@ -10,6 +10,9 @@ class Prospek extends Model
     protected $table = 'prospek';
 
     protected $fillable = [
+        'kontak_id',
+        'rincian_skor',
+        'tindak_lanjut_berikut',
         'nama',
         'nomor_telepon',
         'jenjang',
@@ -25,7 +28,14 @@ class Prospek extends Model
     {
         return [
             'skor' => 'integer',
+            'rincian_skor' => 'array',
+            'tindak_lanjut_berikut' => 'date',
         ];
+    }
+
+    public function kontak(): BelongsTo
+    {
+        return $this->belongsTo(Kontak::class, 'kontak_id');
     }
 
     public function penanggungJawab(): BelongsTo

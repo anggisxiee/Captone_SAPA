@@ -342,7 +342,7 @@
                                     <tr>
                                         <td class="td !text-[9px] !px-2 !py-2">
                                             <div class="font-medium">
-                                                {{ $nomor->nama }}
+                                                {{ $nomor->label }}
                                             </div>
                                             <div class="text-slate-400">
                                                 {{ $nomor->nomor }}

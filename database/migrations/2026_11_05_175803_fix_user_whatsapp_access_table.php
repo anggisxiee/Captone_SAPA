@@ -8,6 +8,12 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Migrasi pembuatan tabel kini sudah memuat kolom ini; lewati
+        // agar database baru tidak gagal (database lama tetap diperbaiki).
+        if (Schema::hasColumn('user_whatsapp_access', 'user_id')) {
+            return;
+        }
+
         Schema::table('user_whatsapp_access', function (Blueprint $table) {
             $table->foreignId('user_id')
                 ->after('id')

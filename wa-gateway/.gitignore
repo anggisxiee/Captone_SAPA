@@ -1,0 +1,4 @@
+node_modules/
+.env
+# Kredensial sesi WhatsApp: jangan pernah di-commit.
+auth/

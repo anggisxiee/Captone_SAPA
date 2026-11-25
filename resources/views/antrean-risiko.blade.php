@@ -236,7 +236,7 @@
                             </td>
 
                             <td class="td !text-[9px] !px-2 !py-2">
-                                {{ $item->nomorWhatsapp?->nama ?? 'Tidak ditentukan' }}
+                                {{ $item->nomorWhatsapp?->label ?? 'Tidak ditentukan' }}
                             </td>
 
                             <td class="td !text-[9px] !px-2 !py-2">
@@ -503,7 +503,7 @@
                                 value="{{ $nomor->id }}"
                                 @selected(old('nomor_whatsapp_id') == $nomor->id)
                             >
-                                {{ $nomor->nama }}
+                                {{ $nomor->label }}
                             </option>
                         @endforeach
                     </select>

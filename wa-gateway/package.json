@@ -1,0 +1,19 @@
+{
+  "name": "sapa-wa-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Gateway WhatsApp (Baileys) untuk SAPA. Dipanggil Laravel lewat HTTP lokal dan meneruskan pesan masuk ke webhook Laravel.",
+  "type": "module",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "start": "node --env-file=.env src/index.js",
+    "dev": "node --watch --env-file=.env src/index.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "pino": "^9.6.0"
+  }
+}

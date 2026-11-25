@@ -4,6 +4,15 @@
 @section('subtitle', 'Sesi tertaut, mode AI, dan batas pesan harian')
 
 @section('content')
+@php
+    // Setelah menambah nomor, Administrator langsung diarahkan ke QR.
+    $nomorBaru = session('tautkan_id')
+        ? $nomorWhatsapp->firstWhere('id', session('tautkan_id'))
+        : null;
+    $tautkanOtomatis = ($nomorBaru && $penggunaLogin->role === 'Administrator')
+        ? ['id' => $nomorBaru->id, 'nama' => $nomorBaru->label, 'nomor' => $nomorBaru->nomor]
+        : null;
+@endphp
 <div x-data="{
     tambah: false,
     edit: false,
@@ -11,19 +20,75 @@
     target: null,
     form: {
         nama: '',
-        nomor: ''
+        nomor: '',
+        tujuan: 'Admin'
+    },
+    qr: { buka: false, id: null, nama: '', nomor: '', svg: null, sisa: 0, kedaluwarsa: false, galat: '' },
+    pewaktu: null,
+    csrf: @js(csrf_token()),
+    urlNomor(id, aksi) {
+        return '{{ url('/nomor-whatsapp') }}/' + id + '/' + aksi;
+    },
+    async panggil(url, metode) {
+        const res = await fetch(url, {
+            method: metode,
+            headers: { 'X-CSRF-TOKEN': this.csrf, 'Accept': 'application/json' }
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { this.qr.galat = data.pesan || 'Terjadi kesalahan.'; return null; }
+        this.qr.galat = '';
+        return data;
+    },
+    terapkan(data) {
+        if (!data) return;
+        this.qr.svg = data.qr_svg;
+        this.qr.sisa = data.sisa_detik;
+        this.qr.kedaluwarsa = data.kedaluwarsa;
+        if (data.status_sesi === 'Tersambung') {
+            this.tutupQr();
+            window.location.reload();
+        }
+    },
+    async mulaiTautan(item) {
+        this.qr = { buka: true, id: item.id, nama: item.nama, nomor: item.nomor, svg: null, sisa: 0, kedaluwarsa: false, galat: '' };
+        this.terapkan(await this.panggil(this.urlNomor(item.id, 'tautkan'), 'POST'));
+        this.mulaiPantau();
+    },
+    mulaiPantau() {
+        clearInterval(this.pewaktu);
+        let tik = 0;
+        this.pewaktu = setInterval(async () => {
+            if (this.qr.sisa > 0) this.qr.sisa--;
+            if (this.qr.sisa === 0 && this.qr.svg) this.qr.kedaluwarsa = true;
+            // Sinkron ke server setiap 2 detik.
+            if (++tik % 2 === 0 && this.qr.id) {
+                this.terapkan(await this.panggil(this.urlNomor(this.qr.id, 'sesi'), 'GET'));
+            }
+        }, 1000);
+    },
+    tutupQr() {
+        clearInterval(this.pewaktu);
+        this.qr.buka = false;
+    },
+    async simulasiPindai() {
+        this.terapkan(await this.panggil(this.urlNomor(this.qr.id, 'simulasi-pindai'), 'POST'));
     },
     bukaEdit(item) {
         this.target = item;
         this.form.nama = item.nama;
         this.form.nomor = item.nomor;
+        this.form.tujuan = item.tujuan;
         this.edit = true;
     },
     bukaHapus(item) {
         this.target = item;
         this.hapus = true;
     }
-}" class="text-xs">
+}"
+@if ($tautkanOtomatis)
+    x-init="mulaiTautan(@js($tautkanOtomatis))"
+@endif
+class="text-xs">
 
     {{-- Tombol tambah --}}
     <div class="flex justify-end -mt-12 mb-4">
@@ -58,15 +123,26 @@
                 <div class="flex justify-between items-start">
                     <div>
                         <div class="font-semibold text-xs">
-                            {{ $item->nama }}
+                            {{ $item->label }}
                         </div>
                         <div class="text-[10px] text-slate-400 mt-0.5">
-                            {{ $item->nomor }}
+                            {{ $item->nomor }} · {{ $item->tujuan }}
                         </div>
                     </div>
 
-                    <span class="badge {{ $item->status === 'Aktif' ? 'b-green' : 'b-red' }} self-start !text-[9px] !px-2 !py-0.5">
-                        {{ $item->status === 'Aktif' ? 'Tersambung' : 'Nonaktif' }}
+                    @php
+                        $labelSesi = $item->status !== 'Aktif'
+                            ? 'Nonaktif'
+                            : ($item->qrKedaluwarsa() ? 'QR kedaluwarsa' : $item->status_sesi);
+                        $warnaSesi = match ($labelSesi) {
+                            'Tersambung' => 'b-green',
+                            'Menunggu QR', 'QR kedaluwarsa' => 'b-amber',
+                            'Belum tertaut', 'Nonaktif' => 'b-slate',
+                            default => 'b-red',
+                        };
+                    @endphp
+                    <span class="badge {{ $warnaSesi }} self-start !text-[9px] !px-2 !py-0.5">
+                        {{ $labelSesi }}
                     </span>
                 </div>
 
@@ -81,14 +157,32 @@
                     <span class="font-medium text-right">-</span>
 
                     <span class="text-slate-500">Sesi terakhir aktif</span>
-                    <span class="font-medium text-right">-</span>
+                    <span class="font-medium text-right">{{ $item->terakhir_aktif_pada?->diffForHumans() ?? '-' }}</span>
                 </div>
 
                 <div class="flex gap-1.5 mt-3 flex-wrap">
 
+                    @if ($penggunaLogin->role === 'Administrator' && $item->status === 'Aktif')
+                        @if ($item->status_sesi === 'Tersambung')
+                            <form action="{{ route('nomor-whatsapp.putuskan', $item->id) }}" method="POST"
+                                onsubmit="return confirm('Putuskan sesi WhatsApp nomor ini?')">
+                                @csrf
+                                <button type="submit" class="btn btn-outline !text-[10px] !px-2.5 !py-1">
+                                    Putuskan
+                                </button>
+                            </form>
+                        @else
+                            <button
+                                @click="mulaiTautan(@js(['id' => $item->id, 'nama' => $item->label, 'nomor' => $item->nomor]))"
+                                class="btn btn-primary !text-[10px] !px-2.5 !py-1">
+                                {{ $item->status_sesi === 'Belum tertaut' ? 'Tautkan' : 'Tautkan ulang' }}
+                            </button>
+                        @endif
+                    @endif
+
                     {{-- Kelola --}}
                     <button
-                        @click='bukaEdit(@json(["id" => $item->id, "nama" => $item->nama, "nomor" => $item->nomor]))'
+                        @click="bukaEdit(@js(['id' => $item->id, 'nama' => $item->label, 'nomor' => $item->nomor, 'tujuan' => $item->tujuan]))"
                         class="btn btn-outline !text-[10px] !px-2.5 !py-1">
                         Kelola
                     </button>
@@ -107,7 +201,7 @@
 
                     {{-- Hapus --}}
                     <button
-                        @click='bukaHapus(@json(["id" => $item->id, "nama" => $item->nama]))'
+                        @click="bukaHapus(@js(['id' => $item->id, 'nama' => $item->label]))"
                         class="btn btn-danger !text-[10px] !px-2.5 !py-1">
                         Hapus
                     </button>
@@ -170,6 +264,16 @@
                             placeholder="Contoh: 081234567890"
                             class="field w-full !text-xs">
                     </div>
+
+                    <div>
+                        <label class="block text-[10px] text-slate-500 mb-1">
+                            Tujuan nomor
+                        </label>
+                        <select name="tujuan" class="field w-full !text-xs">
+                            <option value="Admin">Admin</option>
+                            <option value="Sales">Sales</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="flex justify-end gap-2 mt-4">
@@ -197,7 +301,7 @@
                 Kelola nomor WhatsApp
             </h3>
 
-            <form :action="'/nomor-whatsapp/' + target.id" method="POST">
+            <form :action="'/nomor-whatsapp/' + target?.id" method="POST">
                 @csrf
                 @method('PUT')
 
@@ -216,6 +320,16 @@
                         </label>
                         <input type="text" name="nomor" x-model="form.nomor"
                             required class="field w-full !text-xs">
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] text-slate-500 mb-1">
+                            Tujuan nomor
+                        </label>
+                        <select name="tujuan" x-model="form.tujuan" class="field w-full !text-xs">
+                            <option value="Admin">Admin</option>
+                            <option value="Sales">Sales</option>
+                        </select>
                     </div>
                 </div>
 
@@ -249,7 +363,7 @@
                 akan dihapus dari daftar.
             </p>
 
-            <form :action="'/nomor-whatsapp/' + target.id" method="POST">
+            <form :action="'/nomor-whatsapp/' + target?.id" method="POST">
                 @csrf
                 @method('DELETE')
 
@@ -266,6 +380,68 @@
             </form>
         </div>
     </div>
+
+    @if ($penggunaLogin->role === 'Administrator')
+    {{-- Modal penautan QR --}}
+    <div x-show="qr.buka" x-cloak
+        class="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 p-4">
+
+        <div class="bg-white rounded-xl p-5 w-full max-w-xl">
+
+            <h3 class="font-semibold text-sm">Tautkan nomor WhatsApp</h3>
+            <p class="text-[10px] text-slate-500 mt-0.5">
+                Nomor target: <span x-text="qr.nama"></span> (<span x-text="qr.nomor"></span>)
+            </p>
+
+            <div class="grid grid-cols-[1fr_280px] gap-5 mt-4">
+
+                <ol class="space-y-2.5 text-[11px] text-slate-700">
+                    <li><span class="text-teal-700 font-semibold">1.</span> Buka WhatsApp di ponsel nomor tersebut.</li>
+                    <li><span class="text-teal-700 font-semibold">2.</span> Ketuk Menu atau Pengaturan, lalu pilih Perangkat tertaut.</li>
+                    <li><span class="text-teal-700 font-semibold">3.</span> Ketuk Tautkan perangkat.</li>
+                    <li><span class="text-teal-700 font-semibold">4.</span> Arahkan kamera ke kode QR di samping.</li>
+                </ol>
+
+                <div>
+                    <div class="w-[280px] h-[280px] bg-white border border-slate-200 relative">
+                        <div x-html="qr.svg" :class="qr.kedaluwarsa ? 'opacity-20' : ''"></div>
+                        <div x-show="!qr.svg" class="absolute inset-0 flex items-center justify-center text-[10px] text-slate-400">
+                            Membuat kode…
+                        </div>
+                        <div x-show="qr.kedaluwarsa" class="absolute inset-0 flex items-center justify-center text-[11px] font-semibold text-amber-700">
+                            QR kedaluwarsa
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-center mt-1.5 text-amber-700" x-show="qr.svg && !qr.kedaluwarsa">
+                        Kode kedaluwarsa dalam <span x-text="qr.sisa"></span> detik
+                    </p>
+                </div>
+            </div>
+
+            <p class="text-[10px] text-red-600 mt-2" x-show="qr.galat" x-text="qr.galat"></p>
+
+            <div class="flex justify-between items-center mt-4">
+                <button type="button" @click="mulaiTautan({ id: qr.id, nama: qr.nama, nomor: qr.nomor })"
+                    class="btn btn-outline !text-[10px] !px-2.5 !py-1">
+                    Buat ulang kode
+                </button>
+
+                <div class="flex gap-2">
+                    @if (config('whatsapp.driver') === 'fake')
+                        <button type="button" @click="simulasiPindai()" x-show="qr.svg && !qr.kedaluwarsa"
+                            class="btn btn-outline !text-[10px] !px-2.5 !py-1 border-dashed">
+                            Simulasikan pindai (mode uji)
+                        </button>
+                    @endif
+                    <button type="button" @click="tutupQr()"
+                        class="btn btn-outline !text-[10px] !px-2.5 !py-1">
+                        Batal
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 
 </div>
 @endsection

@@ -10,18 +10,24 @@ class PesanWhatsapp extends Model
     protected $table = 'pesan_whatsapp';
 
     protected $fillable = [
-        'nomor_whatsapp_id',
-        'kontak_nama',
-        'kontak_telepon',
-        'pengirim',
+        'percakapan_id',
+        'arah',            // masuk | keluar
+        'jenis_pengirim',  // pelanggan | ai | agen
         'isi',
+        'status',          // diterima | menunggu | terkirim | gagal
+        'meta_ai',         // jejak keputusan AI (JSON)
+        'wa_message_id',
     ];
 
-    public function nomorWhatsapp(): BelongsTo
+    protected function casts(): array
     {
-        return $this->belongsTo(
-            NomorWhatsapp::class,
-            'nomor_whatsapp_id'
-        );
+        return [
+            'meta_ai' => 'array',
+        ];
+    }
+
+    public function percakapan(): BelongsTo
+    {
+        return $this->belongsTo(Percakapan::class, 'percakapan_id');
     }
 }

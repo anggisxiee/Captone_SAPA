@@ -4,6 +4,8 @@
 @section('subtitle', 'Percakapan WhatsApp dari semua nomor')
 
 @section('actions')
+    {{-- x-data diperlukan agar Alpine memproses @change dan @click di header --}}
+    <div x-data class="flex items-center gap-2">
     <select
         class="field w-auto text-xs py-1.5"
         @change="$dispatch('nomor-filter', $event.target.value)"
@@ -12,244 +14,24 @@
 
         @foreach ($nomorWhatsapp as $nomor)
             <option value="{{ $nomor->id }}">
-                {{ $nomor->nama }}
+                {{ $nomor->label }}
             </option>
         @endforeach
     </select>
 
-    <button class="btn btn-primary text-xs py-1.5">
-        Pesan baru
-    </button>
+    @if (count($nomorBolehBalas) > 0)
+        <button type="button" class="btn btn-primary text-xs py-1.5"
+            @click="$dispatch('pesan-baru')">
+            Pesan baru
+        </button>
+    @endif
+    </div>
 @endsection
 
 @section('content')
-@php
-    $daftar = [
-        [
-            'id' => 1,
-            'nama' => 'Rina Kusuma',
-            'telepon' => '0812-3456-7890',
-            'jam' => '10:14',
-            'cuplikan' => 'Kalau untuk garansi nilai dan diskon kakak...',
-            'nomor' => 'Admin 1001',
-            'nomorId' => 2,
-            'status' => 'Eskalasi AI',
-            'warna' => 'b-amber',
-            'jenjang' => 'SMP kelas 8',
-            'mapel' => 'Matematika',
-            'cabang' => 'Bandung (Dago)',
-            'sumber' => 'Iklan Instagram',
-            'tahap' => 'Tertarik',
-            'skor' => '78 / 100',
-            'maksud' => 'tanya_jadwal_dan_biaya',
-            'keyakinan' => '0,41',
-            'ambang' => '0,62',
-            'artikel' => 'KB-012, KB-004',
-            'pesan' => [
-                [
-                    'pengirim' => 'pelanggan',
-                    'isi' => 'Halo admin, mau tanya biaya dan jadwal bimbel persiapan ujian untuk kelas 8 SMP matematika di cabang Dago.',
-                    'jam' => '10:10',
-                ],
-                [
-                    'pengirim' => 'ai',
-                    'isi' => 'Halo Kak Rina! Untuk kelas 8 SMP program Reguler Matematika cabang Dago tersedia Selasa & Kamis (16.00–17.30 WIB) atau Sabtu intensif. Biaya mulai Rp 450.000/bulan. Apakah ingin kami jadwalkan trial gratis minggu ini?',
-                    'jam' => '10:11',
-                ],
-                [
-                    'pengirim' => 'pelanggan',
-                    'isi' => 'Kalau untuk garansi nilai dan diskon kakak beradik bagaimana syaratnya?',
-                    'jam' => '10:13',
-                ],
-                [
-                    'pengirim' => 'sistem',
-                    'isi' => 'Keyakinan AI 0,41 di bawah ambang 0,62. Percakapan dieskalasi ke agen dan AI berhenti membalas.',
-                    'jam' => '',
-                ],
-            ],
-        ],
-        [
-            'id' => 2,
-            'nama' => 'Bapak Hendra',
-            'telepon' => '0813-4567-8901',
-            'jam' => '09:45',
-            'cuplikan' => 'Baik min, besok sore saya transfer untuk...',
-            'nomor' => 'Sales 1002',
-            'nomorId' => 3,
-            'status' => 'Dibalas AI',
-            'warna' => 'b-green',
-            'jenjang' => 'SMA kelas 11',
-            'mapel' => 'Fisika',
-            'cabang' => 'Yogyakarta',
-            'sumber' => 'WhatsApp',
-            'tahap' => 'Negosiasi',
-            'skor' => '85 / 100',
-            'maksud' => 'konfirmasi_pembayaran',
-            'keyakinan' => '0,91',
-            'ambang' => '0,62',
-            'artikel' => 'KB-008, KB-010',
-            'pesan' => [
-                [
-                    'pengirim' => 'pelanggan',
-                    'isi' => 'Selamat pagi admin, saya ingin mendaftar bimbel Fisika untuk anak saya kelas 11.',
-                    'jam' => '09:40',
-                ],
-                [
-                    'pengirim' => 'ai',
-                    'isi' => 'Baik Pak Hendra. Untuk kelas 11 tersedia program reguler dan intensif. Apakah Bapak ingin mendapatkan informasi biaya terlebih dahulu?',
-                    'jam' => '09:42',
-                ],
-                [
-                    'pengirim' => 'pelanggan',
-                    'isi' => 'Baik min, besok sore saya transfer untuk pendaftarannya.',
-                    'jam' => '09:45',
-                ],
-            ],
-        ],
-        [
-            'id' => 3,
-            'nama' => 'Sinta (Ibu Dita)',
-            'telepon' => '0815-2345-6789',
-            'jam' => '09:12',
-            'cuplikan' => 'Apakah bisa request tentor perempuan?',
-            'nomor' => 'Admin 1001',
-            'nomorId' => 2,
-            'status' => 'Terjawab',
-            'warna' => 'b-slate',
-            'jenjang' => 'SMP kelas 9',
-            'mapel' => 'Bahasa Inggris',
-            'cabang' => 'Bandung',
-            'sumber' => 'Website',
-            'tahap' => 'Konsultasi',
-            'skor' => '65 / 100',
-            'maksud' => 'permintaan_tentor',
-            'keyakinan' => '0,88',
-            'ambang' => '0,62',
-            'artikel' => 'KB-005',
-            'pesan' => [
-                [
-                    'pengirim' => 'pelanggan',
-                    'isi' => 'Apakah bisa request tentor perempuan untuk anak saya?',
-                    'jam' => '09:10',
-                ],
-                [
-                    'pengirim' => 'ai',
-                    'isi' => 'Tentu, Ibu. Kami akan bantu mencarikan tentor perempuan yang sesuai dengan kebutuhan belajar anak.',
-                    'jam' => '09:12',
-                ],
-            ],
-        ],
-        [
-            'id' => 4,
-            'nama' => 'Agus Wibowo',
-            'telepon' => '0816-3456-7890',
-            'jam' => 'Kemarin',
-            'cuplikan' => 'Terima kasih informasinya, brosur sudah...',
-            'nomor' => 'Sales 1002',
-            'nomorId' => 3,
-            'status' => 'Selesai',
-            'warna' => 'b-slate',
-            'jenjang' => 'SMA kelas 12',
-            'mapel' => 'Matematika',
-            'cabang' => 'Yogyakarta',
-            'sumber' => 'WhatsApp',
-            'tahap' => 'Selesai',
-            'skor' => '50 / 100',
-            'maksud' => 'permintaan_brosur',
-            'keyakinan' => '0,95',
-            'ambang' => '0,62',
-            'artikel' => 'KB-002',
-            'pesan' => [
-                [
-                    'pengirim' => 'pelanggan',
-                    'isi' => 'Boleh minta brosur program bimbel untuk kelas 12?',
-                    'jam' => 'Kemarin',
-                ],
-                [
-                    'pengirim' => 'ai',
-                    'isi' => 'Tentu Pak Agus. Berikut informasi program bimbel dan brosur yang dapat dipelajari.',
-                    'jam' => 'Kemarin',
-                ],
-                [
-                    'pengirim' => 'pelanggan',
-                    'isi' => 'Terima kasih informasinya, brosur sudah saya terima.',
-                    'jam' => 'Kemarin',
-                ],
-            ],
-        ],
-    ];
 
-    // Filter nomor WhatsApp berdasarkan hak akses pengguna
-    $nomorDiizinkan = $nomorWhatsapp
-        ->pluck('id')
-        ->map(fn ($id) => (int) $id)
-        ->all();
 
-    $daftar = array_values(array_filter($daftar, function ($chat) use ($nomorDiizinkan) {
-        return in_array($chat['nomorId'], $nomorDiizinkan);
-    }));
-
-    // Menggabungkan pesan dari database ke percakapan yang sesuai
-    foreach ($pesanTersimpan as $pesanDB) {
-        foreach ($daftar as $index => $chat) {
-            if (
-                (int) $chat['nomorId'] === (int) $pesanDB->nomor_whatsapp_id &&
-                $chat['telepon'] === $pesanDB->kontak_telepon
-            ) {
-                $daftar[$index]['pesan'][] = [
-                    'pengirim' => $pesanDB->pengirim,
-                    'isi' => $pesanDB->isi,
-                    'jam' => $pesanDB->created_at
-                        ? $pesanDB->created_at->format('H:i')
-                        : '',
-                ];
-
-                $daftar[$index]['cuplikan'] = $pesanDB->isi;
-                $daftar[$index]['jam'] = $pesanDB->created_at
-                    ? $pesanDB->created_at->format('H:i')
-                    : '';
-
-                break;
-            }
-        }
-    }
-
-    // Menentukan nomor WhatsApp yang boleh digunakan untuk membalas
-    if ($penggunaLogin->role === 'Administrator') {
-        $nomorBolehBalas = $nomorDiizinkan;
-    } else {
-        $nomorBolehBalas = $penggunaLogin->nomorWhatsapp()
-            ->wherePivotIn('hak_akses', ['Balas chat', 'Kelola'])
-            ->pluck('nomor_whatsapp.id')
-            ->map(fn ($id) => (int) $id)
-            ->all();
-    }
-
-    // Memilih kembali percakapan setelah pesan dikirim
-    $chatTerpilih = session('chat_terpilih');
-
-    $chatAwal = null;
-
-    if ($chatTerpilih) {
-        foreach ($daftar as $chat) {
-            if (
-                (int) $chat['nomorId'] === (int) $chatTerpilih['nomorId'] &&
-                $chat['telepon'] === $chatTerpilih['telepon']
-            ) {
-                $chatAwal = $chat;
-                break;
-            }
-        }
-    }
-
-    $chatAwal = $chatAwal ?? ($daftar[0] ?? null);
-@endphp
-
-@if (session('success'))
-    <div class="mb-3 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-700">
-        {{ session('success') }}
-    </div>
-@endif
+{{-- Notifikasi sukses sudah ditampilkan oleh layout. --}}
 
 @if ($errors->any())
     <div class="mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
@@ -261,11 +43,14 @@
 
 <div
     x-data="{
-        takeover: false,
         tab: 'semua',
         selectedNomor: '',
         selectedChat: @js($chatAwal),
         nomorBolehBalas: @js($nomorBolehBalas),
+
+        urlStatus(id) {
+            return '{{ route('kotak-masuk.status', ['percakapan' => '__ID__']) }}'.replace('__ID__', id);
+        },
 
         bolehBalas(nomorId) {
             return this.nomorBolehBalas.includes(Number(nomorId));
@@ -273,7 +58,6 @@
 
         pilihChat(chat) {
             this.selectedChat = chat;
-            this.takeover = false;
         },
 
         filterNomor(nomor) {
@@ -308,7 +92,7 @@
 
             <button @click="tab='belum'"
                 :class="tab==='belum' ? 'text-teal-700 font-medium' : 'text-slate-500'">
-                Belum dibalas (3)
+                Belum dibalas ({{ $jumlahBelumDibalas }})
             </button>
 
             <button @click="tab='ai'"
@@ -321,7 +105,10 @@
         @foreach ($daftar as $chat)
 
             <div
-                x-show="selectedNomor === '' || selectedNomor === '{{ $chat['nomorId'] }}'"
+                x-show="(selectedNomor === '' || selectedNomor === '{{ $chat['nomorId'] }}')
+                    && (tab === 'semua'
+                        || (tab === 'belum' && @js($chat['belumDibalas']))
+                        || (tab === 'ai' && @js($chat['statusAsli'] === 'Ditangani AI')))"
                 @click="pilihChat(@js($chat))"
                 :class="selectedChat && selectedChat.id === {{ $chat['id'] }} ? 'bg-teal-50/60' : 'hover:bg-slate-50'"
                 class="px-3 py-2.5 border-b border-slate-100 cursor-pointer"
@@ -384,17 +171,33 @@
                         </div>
                     </div>
 
-                    <div class="flex gap-1.5 shrink-0">
+                    <div class="flex gap-1.5 shrink-0" x-show="bolehBalas(selectedChat.nomorId)">
 
-                        <button class="btn btn-outline text-[11px] px-2 py-1.5">
-                            Selesaikan
-                        </button>
+                        <form method="POST" :action="urlStatus(selectedChat.id)">
+                            @csrf
+                            @method('PATCH')
+                            <input type="hidden" name="status" value="Selesai">
+                            <button
+                                class="btn btn-outline text-[11px] px-2 py-1.5"
+                                :disabled="selectedChat.statusAsli === 'Selesai'"
+                            >
+                                Selesaikan
+                            </button>
+                        </form>
 
-                        <button
-                            @click="takeover = !takeover"
-                            class="btn btn-primary text-[11px] px-2 py-1.5"
-                            x-text="takeover ? 'Kembalikan ke AI' : 'Ambil alih'"
-                        ></button>
+                        <form method="POST" :action="urlStatus(selectedChat.id)">
+                            @csrf
+                            @method('PATCH')
+                            <input
+                                type="hidden"
+                                name="status"
+                                :value="selectedChat.statusAsli === 'Ditangani Agen' ? 'Ditangani AI' : 'Ditangani Agen'"
+                            >
+                            <button
+                                class="btn btn-primary text-[11px] px-2 py-1.5"
+                                x-text="selectedChat.statusAsli === 'Ditangani Agen' ? 'Kembalikan ke AI' : 'Ambil alih'"
+                            ></button>
+                        </form>
 
                     </div>
 
@@ -470,20 +273,8 @@
 
                         <input
                             type="hidden"
-                            name="nomor_whatsapp_id"
-                            :value="selectedChat.nomorId"
-                        >
-
-                        <input
-                            type="hidden"
-                            name="kontak_nama"
-                            :value="selectedChat.nama"
-                        >
-
-                        <input
-                            type="hidden"
-                            name="kontak_telepon"
-                            :value="selectedChat.telepon"
+                            name="percakapan_id"
+                            :value="selectedChat.id"
                         >
 
                         <input
@@ -615,4 +406,51 @@
     </div>
 
 </div>
+
+{{-- MODAL PESAN BARU --}}
+@if (count($nomorBolehBalas) > 0)
+<div x-data="{ buka: {{ $errors->has('telepon') || $errors->has('isi') || $errors->has('nomor_whatsapp_id') ? 'true' : 'false' }} }"
+    @pesan-baru.window="buka = true"
+    x-show="buka" x-cloak
+    class="fixed inset-0 bg-slate-900/40 flex items-center justify-center z-50 p-4">
+
+    <div @click.outside="buka = false" class="bg-white rounded-xl p-4 w-full max-w-sm">
+        <h3 class="font-semibold text-sm mb-3">Pesan baru</h3>
+
+        <form method="POST" action="{{ route('kotak-masuk.baru') }}" class="space-y-3">
+            @csrf
+
+            <div>
+                <label class="block text-[10px] text-slate-500 mb-1">Kirim dari nomor</label>
+                <select name="nomor_whatsapp_id" class="field w-full !text-xs" required>
+                    @foreach ($nomorWhatsapp->whereIn('id', $nomorBolehBalas) as $nomor)
+                        <option value="{{ $nomor->id }}" @selected(old('nomor_whatsapp_id') == $nomor->id)>{{ $nomor->label }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-[10px] text-slate-500 mb-1">Nomor tujuan</label>
+                <input type="text" name="telepon" value="{{ old('telepon') }}" required
+                    placeholder="Contoh: 081234567890" class="field w-full !text-xs">
+            </div>
+
+            <div>
+                <label class="block text-[10px] text-slate-500 mb-1">Nama (opsional)</label>
+                <input type="text" name="nama" value="{{ old('nama') }}" class="field w-full !text-xs">
+            </div>
+
+            <div>
+                <label class="block text-[10px] text-slate-500 mb-1">Pesan</label>
+                <textarea name="isi" rows="3" required maxlength="5000" class="field w-full !text-xs">{{ old('isi') }}</textarea>
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <button type="button" @click="buka = false" class="btn btn-outline !text-[10px] !px-2.5 !py-1">Batal</button>
+                <button type="submit" class="btn btn-primary !text-[10px] !px-2.5 !py-1">Kirim</button>
+            </div>
+        </form>
+    </div>
+</div>
+@endif
 @endsection

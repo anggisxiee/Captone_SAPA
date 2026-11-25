@@ -19,6 +19,9 @@
             @if (session('error'))
                 <div class="rounded-lg border border-red-300 bg-red-50 text-red-600 px-3 py-2 text-xs">{{ session('error') }}</div>
             @endif
+            @if ($errors->any())
+                <div class="rounded-lg border border-red-300 bg-red-50 text-red-600 px-3 py-2 text-xs">{{ $errors->first() }}</div>
+            @endif
             <div>
                 <label class="label">Email</label>
                 <input type="email" name="email" value="{{ old('email') }}" placeholder="dewi@asentra.sch.id" class="field" required>
@@ -29,7 +32,6 @@
             </div>
             <button class="btn btn-primary w-full">Masuk</button>
             <p class="text-[11px] text-slate-500">Akun dibuat oleh Administrator. Setelah 5 kali gagal, login ditahan 5 menit.</p>
-            <p class="text-[11px] text-slate-400">Demo: dewi@asentra.sch.id / password123</p>
         </form>
     </div>
 </body>

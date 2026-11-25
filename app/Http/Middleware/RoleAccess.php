@@ -5,7 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
-use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 
 class RoleAccess
 {
@@ -16,7 +16,7 @@ class RoleAccess
     ): Response {
 
         // Ambil pengguna yang sedang login
-        $user = User::find(session('user_id'));
+        $user = Auth::user();
 
         // Jika pengguna tidak ditemukan
         if (!$user) {

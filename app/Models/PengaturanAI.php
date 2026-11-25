@@ -9,6 +9,7 @@ class PengaturanAI extends Model
     protected $table = 'pengaturan_ai';
 
     protected $fillable = [
+        'nomor_whatsapp_id',
         'penyedia',
         'model',
         'api_key',
@@ -19,6 +20,8 @@ class PengaturanAI extends Model
         'kata_kunci_eskalasi',
         'jeda_min',
         'jeda_max',
+        'batas_per_menit',
+        'batas_per_jam',
         'batas_pesan_harian',
         'jam_mulai',
         'jam_selesai',

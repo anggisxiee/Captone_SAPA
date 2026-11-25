@@ -14,7 +14,7 @@ class AntreanRisikoController extends Controller
     public function index()
     {
         // Mengambil data antrean pesan
-        $dataAntrean = AntreanPesan::latest()->get();
+        $dataAntrean = AntreanPesan::with('pesanWhatsapp.percakapan.kontak')->latest()->get();
 
         // Mengambil data insiden risiko
         $insiden = InsidenRisiko::with('nomorWhatsapp')
@@ -22,7 +22,7 @@ class AntreanRisikoController extends Controller
             ->get();
 
         // Mengambil daftar nomor WhatsApp
-        $nomorWhatsapp = NomorWhatsapp::orderBy('nama')->get();
+        $nomorWhatsapp = NomorWhatsapp::orderBy('label')->get();
 
         /*
         |--------------------------------------------------------------------------
@@ -95,7 +95,10 @@ class AntreanRisikoController extends Controller
                     ? $pesan->jadwal_kirim->format('H:i:s')
                     : '-',
                 'pengirim' => $pesan->pengirim,
-                'penerima' => $pesan->penerima,
+                // penerima berisi nomor tujuan; nama kontak ditambahkan bila diketahui.
+                'penerima' => ($nama = $pesan->pesanWhatsapp?->percakapan?->kontak?->nama)
+                    ? "{$nama} · {$pesan->penerima}"
+                    : $pesan->penerima,
                 'isi' => $pesan->isi_pesan,
                 'skor' => $pesan->skor_risiko,
                 'keputusan' => $pesan->keputusan,
@@ -157,7 +160,7 @@ class AntreanRisikoController extends Controller
 
             return [
                 'id' => $nomor->id,
-                'nama' => $nomor->nama,
+                'nama' => $nomor->label,
                 'nomor' => $nomor->nomor,
                 'status' => $nomor->status,
                 'terkirim' => $terkirim,
