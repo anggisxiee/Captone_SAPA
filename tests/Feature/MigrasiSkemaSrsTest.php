@@ -23,7 +23,7 @@ class MigrasiSkemaSrsTest extends TestCase
 
         return [
             'lama' => array_values(array_filter($semua, fn ($f) => basename($f) < self::BATAS)),
-            'baru' => array_values(array_filter($semua, fn ($f) => basename($f) >= self::BATAS)),
+            'baru' => array_values(array_filter($semua, fn ($f) => str_starts_with(basename($f), self::BATAS))),
         ];
     }
 

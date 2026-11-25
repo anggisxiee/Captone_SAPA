@@ -18,7 +18,7 @@
 
 <div
     x-data="{
-        sel: null,
+        sel: @js($prospekTerpilih),
         data: @js($prospek),
         kataKunci: '',
         filterTahap: '',
@@ -50,6 +50,10 @@
                 daftar: 'Daftar',
                 batal: 'Batal'
             }[kode] || kode;
+        },
+
+        warna(kode) {
+            return { tinggi: 'text-emerald-700 bg-emerald-50', sedang: 'text-amber-700 bg-amber-50', rendah: 'text-slate-600 bg-slate-100' }[kode] || '';
         },
 
         get prospekTerpilih() {
@@ -212,7 +216,8 @@
                                     </span>
 
                                     <span
-                                        class="font-semibold text-teal-700"
+                                        class="rounded px-1.5 py-0.5 font-semibold"
+                                        :class="warna(p.warnaSkor)"
                                         x-text="(p.skor ?? 0) + '/100'"
                                     ></span>
 
@@ -275,11 +280,32 @@
                     </div>
 
                     <div>
-                        <div class="text-[10px] text-slate-500">Skor Prospek</div>
+                        <div class="text-[10px] text-slate-500">Skor Prioritas</div>
                         <div
-                            class="text-xl font-semibold text-teal-700"
+                            class="inline-block rounded px-2 py-0.5 text-xl font-semibold"
+                            :class="warna(prospekTerpilih.warnaSkor)"
                             x-text="(prospekTerpilih.skor ?? 0) + '/100'"
                         ></div>
+                    </div>
+
+                    {{-- Rincian skor (BR06) --}}
+                    <div class="space-y-1.5">
+                        <div class="text-[10px] text-slate-500">Rincian skor</div>
+                        <template x-for="k in prospekTerpilih.rincian" :key="k.kunci">
+                            <div>
+                                <div class="flex justify-between text-[10px]">
+                                    <span class="text-slate-700" x-text="k.label + ' (bobot ' + k.bobot + ')'"></span>
+                                    <span class="font-semibold" x-text="k.poin + ' poin'"></span>
+                                </div>
+                                <div class="h-1 bg-slate-100 rounded-full overflow-hidden my-0.5">
+                                    <div class="h-full bg-teal-500 rounded-full" :style="'width:' + Math.round(k.nilai * 100) + '%'"></div>
+                                </div>
+                                <div class="text-[9px] text-slate-400" x-text="k.keterangan"></div>
+                            </div>
+                        </template>
+                        <div x-show="!prospekTerpilih.rincian.length" class="text-[10px] text-slate-400">
+                            Skor belum dihitung. Jalankan <code>php artisan prospek:hitung-ulang</code>.
+                        </div>
                     </div>
 
                     <div>
@@ -287,12 +313,58 @@
                         <div x-text="prospekTerpilih.pj || 'Belum ditugaskan'"></div>
                     </div>
 
-                    <div>
-                        <div class="text-[10px] text-slate-500">Catatan</div>
-                        <div
-                            class="rounded-md bg-slate-50 p-2 text-slate-600"
-                            x-text="prospekTerpilih.catatan || 'Belum ada catatan.'"
-                        ></div>
+                    <a x-show="prospekTerpilih.percakapanId"
+                       :href="'{{ route('kotak-masuk') }}?percakapan=' + prospekTerpilih.percakapanId"
+                       class="inline-block text-[11px] text-teal-700 underline">
+                        Buka percakapan di Kotak Masuk
+                    </a>
+
+                    {{-- Tindak lanjut (BR05: catatan wajib) --}}
+                    <form
+                        x-show="prospekTerpilih.bisaUbah"
+                        method="POST"
+                        :action="'{{ url('/prospek') }}/' + prospekTerpilih.id + '/tindak-lanjut'"
+                        class="space-y-2 border-t border-slate-100 pt-3"
+                    >
+                        @csrf
+                        @method('PATCH')
+
+                        <div class="text-[10px] font-semibold text-slate-700">Tindak lanjut</div>
+
+                        <select name="tahap" :value="prospekTerpilih.tahap" class="w-full rounded-md border border-slate-200 px-2 py-1.5 text-xs">
+                            <template x-for="t in ['baru','dihubungi','tertarik','penawaran','daftar','batal']" :key="t">
+                                <option :value="t" :selected="t === prospekTerpilih.tahap" x-text="namaTahap(t)"></option>
+                            </template>
+                        </select>
+
+                        <textarea
+                            name="catatan" rows="2" required maxlength="2000"
+                            placeholder="Catatan aktivitas (wajib)"
+                            class="w-full rounded-md border border-slate-200 px-2 py-1.5 text-xs"
+                        ></textarea>
+
+                        <div>
+                            <label class="block text-[10px] text-slate-500 mb-0.5">Tindak lanjut berikutnya</label>
+                            <input type="date" name="tindak_lanjut_berikut" :value="prospekTerpilih.tindakLanjut || ''"
+                                   min="{{ now()->format('Y-m-d') }}"
+                                   class="w-full rounded-md border border-slate-200 px-2 py-1.5 text-xs">
+                        </div>
+
+                        <button type="submit" class="w-full rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700">
+                            Simpan
+                        </button>
+                    </form>
+
+                    {{-- Riwayat aktivitas --}}
+                    <div class="border-t border-slate-100 pt-3">
+                        <div class="text-[10px] font-semibold text-slate-700 mb-1.5">Riwayat aktivitas</div>
+                        <template x-for="(a, i) in prospekTerpilih.aktivitas" :key="i">
+                            <div class="mb-2 rounded-md bg-slate-50 p-2">
+                                <div class="text-slate-700" x-text="a.catatan"></div>
+                                <div class="text-[9px] text-slate-400 mt-0.5" x-text="a.oleh + ' · ' + a.waktu"></div>
+                            </div>
+                        </template>
+                        <div x-show="!prospekTerpilih.aktivitas.length" class="text-[10px] text-slate-400">Belum ada aktivitas.</div>
                     </div>
 
                     <button
@@ -323,7 +395,7 @@
     <div class="bg-white border border-slate-200 rounded-lg p-3">
 
         <div class="font-semibold text-slate-800 mb-3">
-            Faktor Penilaian Skor Prospek
+            Bobot Skor Prioritas (rincian per prospek ada pada detail)
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
@@ -469,20 +541,9 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
 
-                    <div>
-                        <label class="block mb-1 font-medium text-slate-700">
-                            Skor Prospek
-                        </label>
-
-                        <input
-                            type="number"
-                            name="skor"
-                            value="{{ old('skor', 0) }}"
-                            min="0"
-                            max="100"
-                            class="w-full rounded-md border border-slate-200 px-3 py-2 text-xs"
-                        >
-                    </div>
+                    <p class="text-[10px] text-slate-400 self-end pb-2">
+                        Skor prioritas dihitung otomatis dari data dan percakapan.
+                    </p>
 
                     <div>
                         <label class="block mb-1 font-medium text-slate-700">

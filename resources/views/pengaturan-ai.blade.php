@@ -21,9 +21,9 @@
 
 @section('content')
 
-@if (session('success'))
-    <div class="mb-3 rounded-md bg-emerald-50 text-emerald-700 text-xs p-2.5">
-        {{ session('success') }}
+@if (session('peringatan'))
+    <div class="mb-3 rounded-md bg-amber-50 text-amber-700 text-xs p-2.5">
+        {{ session('peringatan') }}
     </div>
 @endif
 
@@ -89,6 +89,17 @@
 
                     <p class="text-[9px] text-slate-400 mt-1">
                         Disimpan terenkripsi. Kosongkan jika tidak ingin mengubah kunci.
+                        Kunci baru diuji ke penyedia sebelum disimpan.
+                    </p>
+                    <p class="text-[9px] mt-1 {{ $konfigurasi->apiKey ? 'text-emerald-600' : 'text-amber-600' }}">
+                        @if ($konfigurasi->driver === 'fake')
+                            Driver AI: simulasi (AI_DRIVER=fake), kunci tidak dipakai.
+                        @elseif ($konfigurasi->apiKey)
+                            Kunci yang dipakai: {{ $konfigurasi->kunciSamar() }}
+                            ({{ $konfigurasi->sumber === 'pengaturan' ? 'dari halaman ini' : 'dari .env' }}).
+                        @else
+                            Belum ada kunci API: sistem memakai mode aturan bawaan.
+                        @endif
                     </p>
                 </div>
 
@@ -166,6 +177,21 @@
 
                 <p class="text-[9px] text-slate-400 mt-1">
                     Pisahkan setiap kata kunci dengan tanda koma.
+                </p>
+            </div>
+
+            <div>
+                <label class="label !text-[10px]">
+                    Nomor uji balasan otomatis
+                </label>
+
+                <input type="text" name="nomor_uji"
+                       class="field !text-[10px] !py-1.5"
+                       value="{{ old('nomor_uji', $pengaturanAI->nomor_uji) }}"
+                       placeholder="081234567890, 081298765432">
+
+                <p class="text-[9px] text-slate-400 mt-1">
+                    Pada nomor ber-Mode AI "Otomatis", AI hanya membalas sendiri ke nomor pelanggan di daftar ini; pelanggan lain hanya mendapat saran. Kosong = semua pelanggan dibalas otomatis.
                 </p>
             </div>
 
@@ -281,40 +307,16 @@
         </div>
 
         <div id="hasilUjiAI" class="text-[10px] space-y-2">
-
-            <div>
-                <b>1. Maksud</b>
-                <p class="text-slate-500 mt-0.5">Belum diuji</p>
-            </div>
-
-            <div>
-                <b>2. Kata kunci terdeteksi</b>
-                <p class="text-slate-500 mt-0.5">Belum diuji</p>
-            </div>
-
-            <div>
-                <b>3. Status eskalasi</b>
-                <p class="text-slate-500 mt-0.5">Belum diuji</p>
-            </div>
-
-            <div>
-                <b>4. Tingkat kecocokan aturan</b>
-                <p class="text-slate-500 mt-0.5">Belum diuji</p>
-            </div>
-
-            <div>
-                <b>5. Balasan simulasi</b>
-                <p class="text-slate-500 mt-0.5">Belum diuji</p>
-            </div>
-
+            <p class="text-slate-500">Belum diuji. Pesan diproses seperti pesan pelanggan sungguhan, tetapi tidak ada yang dikirim.</p>
         </div>
 
         <div id="statusUjiAI"
              class="hidden rounded-md text-[10px] leading-relaxed p-2.5">
         </div>
 
-        <div class="rounded-md bg-amber-50 text-amber-700 text-[9px] leading-relaxed p-2.5">
-            Mode simulasi aturan. Hasil ini belum menggunakan model AI eksternal seperti OpenAI atau Gemini.
+        <div class="rounded-md bg-slate-50 text-slate-500 text-[9px] leading-relaxed p-2.5">
+            Uji ini memanggil penyedia AI sungguhan (memakai sedikit saldo), kecuali pesan sudah diputuskan
+            oleh aturan gratis: kata kunci eskalasi, nada marah, atau tanpa artikel relevan.
         </div>
 
     </div>
@@ -362,45 +364,68 @@ document.addEventListener('DOMContentLoaded', function () {
                 );
             }
 
+            // Eskalasi oleh aturan (kata kunci / nada) memutuskan sebelum artikel dicari.
+            const olehAturan = ['kata_kunci', 'nada_marah'].includes(data.alasan_kode);
+
+            const artikel = olehAturan
+                ? '<p class="text-slate-500">Tidak diperiksa (diputuskan lebih dulu oleh aturan).</p>'
+                : (data.artikel || []).length
+                ? data.artikel.map(a => `
+                    <div class="flex justify-between gap-2">
+                        <span class="min-w-0 break-words">${escapeHTML(a.kode)} ${escapeHTML(a.judul)}</span>
+                        <span class="shrink-0 ${a.dipakai ? 'text-emerald-600' : 'text-red-500'}">${Number(a.skor).toFixed(2).replace('.', ',')}</span>
+                    </div>`).join('')
+                : '<p class="text-slate-500">Tidak ada artikel yang cocok.</p>';
+
+            const pemeriksaan = data.kata_kunci
+                ? `Kata kunci eskalasi: <b>${escapeHTML(data.kata_kunci)}</b>`
+                : (data.nada && data.nada.marah
+                    ? `Nada marah (${escapeHTML(data.nada.pemicu.join(', '))})`
+                    : 'Tidak ada kata kunci eskalasi, nada tidak marah');
+
+            const modeTeks = data.mode === 'ai'
+                ? `AI (${escapeHTML(data.model || '-')})`
+                : 'Aturan bawaan' + (data.galat ? ` , penyedia tidak dapat dipakai: ${escapeHTML(data.galat)}` : '');
+
             hasil.innerHTML = `
                 <div>
                     <b>1. Maksud</b>
-                    <p class="text-slate-500 mt-0.5">${escapeHTML(data.intent)}</p>
+                    <p class="text-slate-500 mt-0.5">${escapeHTML(data.maksud || '-')}</p>
                 </div>
 
                 <div>
-                    <b>2. Kata kunci terdeteksi</b>
+                    <b>2. Pemeriksaan aturan</b>
+                    <p class="text-slate-500 mt-0.5">${pemeriksaan}</p>
+                </div>
+
+                <div>
+                    <b>3. Artikel (ambang ${Number(data.ambang_relevansi).toFixed(2).replace('.', ',')})</b>
+                    <div class="text-slate-500 mt-0.5 space-y-0.5">${artikel}</div>
+                </div>
+
+                <div>
+                    <b>4. Keyakinan</b>
                     <p class="text-slate-500 mt-0.5">
-                        ${escapeHTML(data.kata_kunci_terdeteksi || 'Tidak ada')}
+                        ${olehAturan ? 'Tidak dihitung' : Number(data.keyakinan).toFixed(2).replace('.', ',')}
+                        dari ambang ${Number(data.ambang).toFixed(2).replace('.', ',')}
                     </p>
                 </div>
 
                 <div>
-                    <b>3. Status eskalasi</b>
+                    <b>5. Keputusan</b>
                     <p class="mt-0.5 ${data.eskalasi ? 'text-red-600' : 'text-emerald-600'}">
-                        ${data.eskalasi ? 'Perlu diteruskan ke admin' : 'Tidak perlu eskalasi'}
+                        ${data.eskalasi ? 'Eskalasi ke agen: ' + escapeHTML(data.alasan) : 'Kirim jawaban otomatis'}
                     </p>
                 </div>
 
                 <div>
-                    <b>4. Tingkat kecocokan aturan</b>
-                    <p class="text-slate-500 mt-0.5">
-                        ${(Number(data.tingkat_kecocokan) * 100).toFixed(0)}%
-                    </p>
-                    <p class="text-slate-400 mt-0.5">
-                        Ambang pengaturan: ${(Number(data.ambang_keyakinan) * 100).toFixed(0)}%
-                    </p>
-                </div>
-
-                <div>
-                    <b>5. Balasan simulasi</b>
-                    <div class="mt-1 rounded-md bg-slate-50 p-2 text-slate-600 leading-relaxed">
-                        ${escapeHTML(data.balasan)}
-                    </div>
+                    <b>6. Yang diterima pelanggan</b>
+                    <div class="mt-1 rounded-md bg-slate-50 p-2 text-slate-600 leading-relaxed whitespace-pre-line">${escapeHTML(data.pesan_pelanggan)}</div>
+                    ${data.jawaban_ditolak ? `<p class="text-slate-400 mt-1">Jawaban yang ditolak (untuk dinilai): ${escapeHTML(data.jawaban_ditolak)}</p>` : ''}
                 </div>
 
                 <p class="text-slate-400 text-[9px]">
-                    Mode: ${escapeHTML(data.mode)}
+                    Mode: ${modeTeks}${data.token ? ` · ${data.token} token` : ''}${data.latensi_ms ? ` · ${data.latensi_ms} ms` : ''}
                 </p>
             `;
 

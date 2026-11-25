@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\GatewayException;
 use App\Exceptions\SudahTersambungException;
+use App\Models\LogAudit;
 use App\Models\NomorWhatsapp;
 use App\Services\WhatsApp\QrRenderer;
 use App\Services\WhatsApp\SesiNomor;
@@ -15,6 +16,7 @@ use Illuminate\Validation\Rule;
 class NomorWhatsappController extends Controller
 {
     private const TUJUAN = ['Admin', 'Sales'];
+    private const MODE_AI = ['otomatis', 'draf', 'mati'];
 
     // Menampilkan daftar nomor WhatsApp
     public function index()
@@ -62,9 +64,21 @@ class NomorWhatsappController extends Controller
                 Rule::unique('nomor_whatsapp', 'nomor')->ignore($nomorWhatsapp->id),
             ],
             'tujuan' => ['required', Rule::in(self::TUJUAN)],
+            'mode_ai' => ['nullable', Rule::in(self::MODE_AI)],
         ]);
 
+        $modeLama = $nomorWhatsapp->mode_ai;
+        $validated = array_filter($validated, fn ($v) => $v !== null);
         $nomorWhatsapp->update($validated);
+
+        if ($nomorWhatsapp->mode_ai !== $modeLama) {
+            LogAudit::catat(
+                'Ubah mode AI nomor',
+                "Nomor {$nomorWhatsapp->label}: {$modeLama} → {$nomorWhatsapp->mode_ai}",
+                'nomor_whatsapp', null, $nomorWhatsapp->id,
+                ['sebelum' => $modeLama, 'sesudah' => $nomorWhatsapp->mode_ai]
+            );
+        }
 
         return redirect()
             ->route('nomor-whatsapp')

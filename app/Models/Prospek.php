@@ -4,24 +4,22 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Prospek extends Model
 {
+    public const TAHAP = ['baru', 'dihubungi', 'tertarik', 'penawaran', 'daftar', 'batal'];
+
     protected $table = 'prospek';
 
     protected $fillable = [
         'kontak_id',
-        'rincian_skor',
-        'tindak_lanjut_berikut',
-        'nama',
-        'nomor_telepon',
-        'jenjang',
-        'program',
-        'skor',
-        'tahap',
         'penanggung_jawab',
-        'sumber',
-        'catatan',
+        'tahap',
+        'skor',
+        'rincian_skor',
+        'program',
+        'tindak_lanjut_berikut',
     ];
 
     protected function casts(): array
@@ -40,9 +38,11 @@ class Prospek extends Model
 
     public function penanggungJawab(): BelongsTo
     {
-        return $this->belongsTo(
-            User::class,
-            'penanggung_jawab'
-        );
+        return $this->belongsTo(User::class, 'penanggung_jawab');
+    }
+
+    public function aktivitas(): HasMany
+    {
+        return $this->hasMany(AktivitasProspek::class, 'prospek_id');
     }
 }

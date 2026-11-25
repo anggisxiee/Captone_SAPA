@@ -86,6 +86,25 @@ class NomorWhatsappSesiTest extends TestCase
         $this->assertDatabaseHas('log_audit', ['aksi' => 'Nomor tersambung']);
     }
 
+    public function test_laporan_tersambung_berulang_dari_gateway_tidak_membanjiri_log_audit(): void
+    {
+        config(['whatsapp.webhook_token' => 'tok']);
+        $nomor = $this->nomor(['status_sesi' => 'Menunggu QR']);
+        $lapor = fn () => $this->postJson('/api/webhook/whatsapp/sesi', ['nomor' => $nomor->nomor, 'status' => 'tersambung'], ['X-Gateway-Token' => 'tok'])->assertOk();
+
+        $lapor();
+        $lapor();
+        $lapor();
+
+        $this->assertSame(1, \App\Models\LogAudit::where('aksi', 'Nomor tersambung')->count());
+        $this->assertSame('Tersambung', $nomor->fresh()->status_sesi);
+
+        // Terputus lalu tersambung lagi dicatat sebagai perpindahan baru.
+        $this->postJson('/api/webhook/whatsapp/sesi', ['nomor' => $nomor->nomor, 'status' => 'terputus'], ['X-Gateway-Token' => 'tok'])->assertOk();
+        $lapor();
+        $this->assertSame(2, \App\Models\LogAudit::where('aksi', 'Nomor tersambung')->count());
+    }
+
     public function test_qr_kedaluwarsa_terdeteksi_dan_dapat_dibuat_ulang(): void
     {
         $nomor = $this->nomor();

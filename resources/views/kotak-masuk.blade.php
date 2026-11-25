@@ -46,6 +46,9 @@
         tab: 'semua',
         selectedNomor: '',
         selectedChat: @js($chatAwal),
+        daftar: @js($daftar),
+        jumlahBelum: @js($jumlahBelumDibalas),
+        pewaktu: null,
         nomorBolehBalas: @js($nomorBolehBalas),
 
         urlStatus(id) {
@@ -56,8 +59,36 @@
             return this.nomorBolehBalas.includes(Number(nomorId));
         },
 
+        // Pembaruan otomatis: pesan baru dan keputusan AI muncul tanpa muat ulang halaman.
+        async segarkan() {
+            if (document.hidden) return;
+            try {
+                const res = await fetch('{{ route('kotak-masuk.data') }}', { headers: { Accept: 'application/json' } });
+                if (!res.ok) return;
+                const data = await res.json();
+                this.daftar = data.daftar;
+                this.jumlahBelum = data.jumlahBelumDibalas;
+                if (this.selectedChat) {
+                    const el = this.$refs.isiChat;
+                    // Menggulung hanya bila pembaca memang sedang di dasar chat dan ada pesan baru.
+                    const diDasar = !el || el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+                    const jumlahLama = this.selectedChat.pesan.length;
+                    this.selectedChat = data.daftar.find(c => c.id === this.selectedChat.id) ?? this.selectedChat;
+                    if (diDasar && this.selectedChat.pesan.length !== jumlahLama) this.keDasar();
+                }
+            } catch (e) { /* koneksi terputus sesaat: coba lagi pada putaran berikutnya */ }
+        },
+
+        keDasar() {
+            this.$nextTick(() => {
+                const el = this.$refs.isiChat;
+                if (el) el.scrollTop = el.scrollHeight;
+            });
+        },
+
         pilihChat(chat) {
             this.selectedChat = chat;
+            this.keDasar();
         },
 
         filterNomor(nomor) {
@@ -76,6 +107,7 @@
             }
         }
     }"
+    x-init="pewaktu = setInterval(() => segarkan(), 4000); keDasar()"
     @nomor-filter.window="filterNomor($event.detail)"
     class="grid grid-cols-[250px_minmax(0,1fr)_220px] gap-3 h-[calc(100vh-130px)] min-h-0 text-xs"
 >
@@ -92,7 +124,7 @@
 
             <button @click="tab='belum'"
                 :class="tab==='belum' ? 'text-teal-700 font-medium' : 'text-slate-500'">
-                Belum dibalas ({{ $jumlahBelumDibalas }})
+                Belum dibalas (<span x-text="jumlahBelum"></span>)
             </button>
 
             <button @click="tab='ai'"
@@ -102,51 +134,37 @@
 
         </div>
 
-        @foreach ($daftar as $chat)
+        <template x-for="chat in daftar" :key="chat.id">
 
             <div
-                x-show="(selectedNomor === '' || selectedNomor === '{{ $chat['nomorId'] }}')
+                x-show="(selectedNomor === '' || selectedNomor === String(chat.nomorId))
                     && (tab === 'semua'
-                        || (tab === 'belum' && @js($chat['belumDibalas']))
-                        || (tab === 'ai' && @js($chat['statusAsli'] === 'Ditangani AI')))"
-                @click="pilihChat(@js($chat))"
-                :class="selectedChat && selectedChat.id === {{ $chat['id'] }} ? 'bg-teal-50/60' : 'hover:bg-slate-50'"
+                        || (tab === 'belum' && chat.belumDibalas)
+                        || (tab === 'ai' && chat.statusAsli === 'Ditangani AI'))"
+                @click="pilihChat(chat)"
+                :class="selectedChat && selectedChat.id === chat.id ? 'bg-teal-50/60' : 'hover:bg-slate-50'"
                 class="px-3 py-2.5 border-b border-slate-100 cursor-pointer"
             >
 
                 <div class="flex justify-between items-center gap-2">
-                    <span class="font-medium text-xs truncate">
-                        {{ $chat['nama'] }}
-                    </span>
-
-                    <span class="text-[10px] text-slate-400 shrink-0">
-                        {{ $chat['jam'] }}
-                    </span>
+                    <span class="font-medium text-xs truncate" x-text="chat.nama"></span>
+                    <span class="text-[10px] text-slate-400 shrink-0" x-text="chat.jam"></span>
                 </div>
 
-                <div class="text-[11px] text-slate-500 truncate mt-1">
-                    {{ $chat['cuplikan'] }}
-                </div>
+                <div class="text-[11px] text-slate-500 truncate mt-1" x-text="chat.cuplikan"></div>
 
                 <div class="mt-1.5 flex gap-1 flex-wrap">
-                    <span class="badge {{ $chat['warna'] }} text-[10px]">
-                        {{ $chat['nomor'] }}
-                    </span>
-
-                    <span class="badge {{ $chat['warna'] }} text-[10px]">
-                        {{ $chat['status'] }}
-                    </span>
+                    <span class="badge text-[10px]" :class="chat.warna" x-text="chat.nomor"></span>
+                    <span class="badge text-[10px]" :class="chat.warna" x-text="chat.status"></span>
                 </div>
 
             </div>
 
-        @endforeach
+        </template>
 
-        @if (count($daftar) === 0)
-            <div class="p-4 text-center text-[11px] text-slate-400">
+        <div x-show="daftar.length === 0" class="p-4 text-center text-[11px] text-slate-400">
                 Belum ada percakapan yang dapat diakses.
             </div>
-        @endif
 
     </div>
 
@@ -205,7 +223,7 @@
 
 
                 {{-- ISI CHAT --}}
-                <div class="flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50/50">
+                <div x-ref="isiChat" class="flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50/50">
 
                     <template x-for="(pesan, index) in selectedChat.pesan" :key="index">
 
@@ -280,6 +298,7 @@
                         <input
                             type="text"
                             name="isi"
+                            x-ref="isiBalasan"
                             class="field text-xs py-2 min-w-0"
                             placeholder="Ketik balasan..."
                             maxlength="5000"
@@ -374,6 +393,8 @@
                     </div>
 
                     <template x-for="item in [
+                        ['Keputusan', selectedChat.keputusanAi],
+                        ['Mode', selectedChat.modeAi],
                         ['Maksud', selectedChat.maksud],
                         ['Keyakinan', selectedChat.keyakinan],
                         ['Ambang eskalasi', selectedChat.ambang],
@@ -389,6 +410,16 @@
                         </div>
 
                     </template>
+
+                    <div x-show="selectedChat.saranAi && bolehBalas(selectedChat.nomorId)" class="mt-2 rounded-lg bg-teal-50 border border-teal-100 p-2">
+                        <div class="text-[10px] text-slate-500 mb-1">Saran balasan AI</div>
+                        <div class="text-[11px] leading-relaxed" x-text="selectedChat.saranAi"></div>
+                        <button type="button"
+                                @click="$refs.isiBalasan.value = selectedChat.saranAi; $refs.isiBalasan.focus()"
+                                class="btn btn-outline !text-[10px] !px-2 !py-1 mt-2">
+                            Gunakan sebagai balasan
+                        </button>
+                    </div>
 
                 </div>
 

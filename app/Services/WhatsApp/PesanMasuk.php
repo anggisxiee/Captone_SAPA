@@ -5,6 +5,7 @@ namespace App\Services\WhatsApp;
 use App\Models\NomorWhatsapp;
 use App\Models\Percakapan;
 use App\Models\PesanWhatsapp;
+use App\Services\Prospek\PembaruanProspek;
 use App\Support\Telepon;
 use Illuminate\Support\Facades\DB;
 
@@ -13,6 +14,10 @@ use Illuminate\Support\Facades\DB;
  */
 class PesanMasuk
 {
+    public function __construct(private readonly PembaruanProspek $prospek)
+    {
+    }
+
     /**
      * @return array{pesan: PesanWhatsapp, duplikat: bool}
      */
@@ -56,6 +61,9 @@ class PesanMasuk
             ]);
 
             $nomor->update(['terakhir_aktif_pada' => now()]);
+
+            // F03: kontak dan prospek otomatis, data calon siswa dari isi pesan.
+            $this->prospek->terapkan($percakapan->kontak, $pesan);
 
             return ['pesan' => $pesan, 'duplikat' => false];
         });

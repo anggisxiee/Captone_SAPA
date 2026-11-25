@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\ArtikelPengetahuan;
 use App\Models\NomorWhatsapp;
 use App\Models\Percakapan;
 use App\Models\PesanWhatsapp;
@@ -79,6 +80,8 @@ class DatabaseSeeder extends Seeder
             $sales->id => ['hak_akses' => 'Tidak ada'],
         ]);
 
+        $this->artikelContoh();
+
         $this->buatPercakapan($admisi, '6285711110001', 'Bu Ratna', [
             ['pelanggan', 'Halo, bimbel kelas 6 SD ada jadwal apa saja?'],
         ], 'Baru', true);
@@ -102,6 +105,37 @@ class DatabaseSeeder extends Seeder
             ['ai', 'Tentu Pak Agus, berikut brosur programnya.'],
             ['pelanggan', 'Terima kasih, brosur sudah saya terima.'],
         ], 'Selesai', false);
+    }
+
+    /**
+     * Artikel basis pengetahuan CONTOH (fiktif) untuk pengembangan dan demo. Isi sebenarnya
+     * berasal dari mitra; basis data produksi dimulai kosong (BR15).
+     */
+    private function artikelContoh(): void
+    {
+        $artikel = [
+            ['Jadwal dan biaya SMP kelas 8', 'jadwal', true, 'reguler,matematika,trial,kelas 8,smp',
+                'Program Reguler Matematika SMP kelas 8 berlangsung Selasa dan Kamis pukul 16.00-17.30 WIB, serta kelas intensif Sabtu. Biaya mulai Rp450.000 per bulan. Tersedia kelas percobaan gratis satu pertemuan.'],
+            ['Skema diskon kakak-beradik', 'biaya', true, 'diskon,kakak adik,saudara,potongan,promo',
+                'Siswa kedua dari keluarga yang sama mendapat potongan 10 persen dari biaya bulanan. Potongan berlaku selama kedua siswa aktif dan tidak dapat digabung dengan promo lain.'],
+            ['Prosedur pendaftaran tryout SNBT', 'pendaftaran', true, 'tryout,snbt,utbk,ujian,daftar',
+                'Pendaftaran tryout SNBT dilakukan melalui admin dengan menyebutkan nama, asal sekolah, dan pilihan jurusan. Tryout diadakan setiap akhir bulan dan hasilnya dibahas pada pertemuan berikutnya.'],
+            ['Fasilitas kelas dan ruang belajar', 'fasilitas', true, 'ruang,kelas,wifi,ac,belajar mandiri',
+                'Setiap kelas maksimal 12 siswa dengan pendingin ruangan, papan tulis digital, dan Wi-Fi. Ruang belajar mandiri dapat dipakai siswa terdaftar di luar jam kelas.'],
+            ['Program intensif UTBK', 'program', true, 'utbk,snbt,intensif,kelas 12,persiapan',
+                'Program intensif UTBK untuk kelas 12 mencakup penalaran, literasi, dan matematika dengan latihan soal mingguan. Kelas berlangsung Senin, Rabu, dan Jumat pukul 18.30-20.30 WIB.'],
+            ['Cara pembayaran dan cicilan', 'biaya', true, 'bayar,cicilan,transfer,angsuran',
+                'Pembayaran dilakukan bulanan melalui transfer bank. Cicilan dua kali per bulan tersedia untuk program intensif dengan persetujuan admin.'],
+            ['Kebijakan garansi peningkatan nilai', 'program', false, 'garansi,jaminan,nilai',
+                'DRAF: ketentuan garansi masih dibahas dengan pemilik dan belum boleh dijawab oleh AI.'],
+        ];
+
+        foreach ($artikel as [$judul, $kategori, $aktif, $label, $isi]) {
+            ArtikelPengetahuan::updateOrCreate(
+                ['judul' => $judul],
+                ['kategori' => $kategori, 'aktif' => $aktif, 'label' => $label, 'isi' => $isi]
+            );
+        }
     }
 
     /**

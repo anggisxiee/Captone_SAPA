@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Middleware\DemoAuth;
 use App\Http\Middleware\RoleAccess;
 
+use App\Http\Controllers\ArtikelPengetahuanController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\TimAksesController;
 use App\Http\Controllers\NomorWhatsappController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\AntreanRisikoController;
 use App\Http\Controllers\InsidenRisikoController;
 use App\Http\Controllers\RiwayatAntreanController;
 use App\Http\Controllers\ProspekController;
+use App\Http\Controllers\KontakController;
 
 /*
 |--------------------------------------------------------------------------
@@ -67,10 +69,20 @@ Route::middleware(DemoAuth::class)->group(function () {
         'store'
     ])->name('prospek.store');
 
-    Route::view('/kontak', 'kontak')->name('kontak');
+    // Pindah tahap, catatan aktivitas, dan jadwal tindak lanjut
+    Route::patch('/prospek/{prospek}/tindak-lanjut', [
+        ProspekController::class,
+        'tindakLanjut'
+    ])->name('prospek.tindak-lanjut');
 
-    Route::view('/basis-pengetahuan', 'basis-pengetahuan')
-        ->name('basis-pengetahuan');
+    Route::get('/kontak', [KontakController::class, 'index'])->name('kontak');
+    Route::get('/kontak/ekspor', [KontakController::class, 'ekspor'])->name('kontak.ekspor');
+    Route::put('/kontak/{kontak}', [KontakController::class, 'update'])->name('kontak.update');
+
+    Route::get('/basis-pengetahuan', [
+        ArtikelPengetahuanController::class,
+        'index'
+    ])->name('basis-pengetahuan');
 
     /*
     | Kotak Masuk WhatsApp
@@ -80,6 +92,11 @@ Route::middleware(DemoAuth::class)->group(function () {
         KotakMasukController::class,
         'index'
     ])->name('kotak-masuk');
+
+    Route::get('/kotak-masuk/data', [
+        KotakMasukController::class,
+        'data'
+    ])->name('kotak-masuk.data');
 
     Route::post('/kotak-masuk/kirim', [
         KotakMasukController::class,
@@ -105,6 +122,25 @@ Route::middleware(DemoAuth::class)->group(function () {
     Route::middleware(
         RoleAccess::class . ':Supervisor,Administrator'
     )->group(function () {
+
+        /*
+        | Basis Pengetahuan (mengelola artikel, F12)
+        */
+
+        Route::post('/basis-pengetahuan', [
+            ArtikelPengetahuanController::class,
+            'store'
+        ])->name('basis-pengetahuan.store');
+
+        Route::post('/basis-pengetahuan/uji', [
+            ArtikelPengetahuanController::class,
+            'uji'
+        ])->name('basis-pengetahuan.uji');
+
+        Route::put('/basis-pengetahuan/{artikel}', [
+            ArtikelPengetahuanController::class,
+            'update'
+        ])->name('basis-pengetahuan.update');
 
         /*
         | Nomor WhatsApp
@@ -223,6 +259,8 @@ Route::middleware(DemoAuth::class)->group(function () {
         /*
         | Penautan sesi nomor WhatsApp (QR)
         */
+
+        Route::delete('/kontak/{kontak}', [KontakController::class, 'destroy'])->name('kontak.destroy');
 
         Route::post('/nomor-whatsapp/{nomorWhatsapp}/tautkan', [
             NomorWhatsappController::class,
